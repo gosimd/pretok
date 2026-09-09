@@ -1,0 +1,4 @@
+# Python 3.9-3.12 (binary wheels); preparation only, no Go runtime dependencies.
+pyarrow==19.0.1
+requests==2.32.3
+tokenizers==0.22.2

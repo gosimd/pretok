@@ -1,0 +1,272 @@
+{
+  "schema": 1,
+  "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "1ff7f41064896984db5d1bb6ff64fa4bc29007d08c1b439e505b7392777a319e",
+  "oracle_version": "0.22.2",
+  "oracle_native_sha256": "899b244f19f1ddd6506c45ea0f7163f38952f2a552272a687a6ef4b9ddcc7327",
+  "generator_sha256": "8b12162a1a16a6cb0afc1ee4e1e91e99fa97d8b0a91d793bb9e9c23126028eb9",
+  "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+  "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
+  "corpora": [
+    {
+      "id": "en-wikitext2",
+      "kind": "natural",
+      "file": "en-wikitext2.txt.gz",
+      "sha256": "7db94861ffbbcb7742ab413994379afd389aebcead5e7695aaeb63d310de7218",
+      "compressed_sha256": "be2c43d201e9e51641235efd64110cc7b8eda06983b6e2b39ec2fcbb671973f7",
+      "bytes": 1048576,
+      "scalars": 1046437,
+      "ascii_fraction": 0.9966869354248047,
+      "whole_spans": 214795,
+      "max_span_bytes": 31,
+      "mean_span_bytes": 4.881752368537443,
+      "source_file": "en-wikitext2.source.json",
+      "batches": [
+        {
+          "size": 256,
+          "file": "en-wikitext2-256.json.gz",
+          "sha256": "d0f281f59b420dd02e6ee58461220e820fc0ab0b1e68091ad9f00f119d330cd5",
+          "requests": 4097,
+          "spans": 218037
+        },
+        {
+          "size": 4096,
+          "file": "en-wikitext2-4096.json.gz",
+          "sha256": "51f7ee37fc813badaa57b9a6ae154c20ede5d959c164524241af35b01ccb883f",
+          "requests": 256,
+          "spans": 214997
+        },
+        {
+          "size": 65536,
+          "file": "en-wikitext2-65536.json.gz",
+          "sha256": "59260647e1cc25a92ef3ab4619915bae690a679e1898bb974f7b5ddcbad9f6d2",
+          "requests": 16,
+          "spans": 214809
+        },
+        {
+          "size": 1048576,
+          "file": "en-wikitext2-1048576.json.gz",
+          "sha256": "9244acfbd4fa41306f7a2ebc001e63073b290efadd2b72b10adaba914eb210a2",
+          "requests": 1,
+          "spans": 214795
+        }
+      ],
+      "source_sha256": "eb37163330d7144ca1bcc67cb9ad09ebe9fcbda1aebb8f015781b455022be654",
+      "whitespace_scalars": 203867,
+      "number_scalars": 15251
+    },
+    {
+      "id": "ru-wikipedia",
+      "kind": "natural",
+      "file": "ru-wikipedia.txt.gz",
+      "sha256": "8aef35a8d5a2ec6818b96a44611ae46b7bf310e6a74cac792188a2561f052f26",
+      "compressed_sha256": "ab6bf14aabb66f35df92f26553437f6bf712e05aba817d532712d46ba194fb75",
+      "bytes": 1048575,
+      "scalars": 574857,
+      "ascii_fraction": 0.09772500774861122,
+      "whole_spans": 102447,
+      "max_span_bytes": 45,
+      "mean_span_bytes": 10.235292395092097,
+      "source_file": "ru-wikipedia.source.json",
+      "batches": [
+        {
+          "size": 256,
+          "file": "ru-wikipedia-256.json.gz",
+          "sha256": "55986b2437c0fbf6917be8a1b72c5a75a86c123b9052a8414f32afd9a8f3208b",
+          "requests": 4104,
+          "spans": 106112
+        },
+        {
+          "size": 4096,
+          "file": "ru-wikipedia-4096.json.gz",
+          "sha256": "2fefad739f4bd0bb61ca8cf7fb547f041720ad0b3e274c7ca700eedd9fec7f48",
+          "requests": 257,
+          "spans": 102674
+        },
+        {
+          "size": 65536,
+          "file": "ru-wikipedia-65536.json.gz",
+          "sha256": "5379ee9b61668902cd53b3e6c6ba9a9b5642a2193475008cd8d794a174867f22",
+          "requests": 17,
+          "spans": 102461
+        },
+        {
+          "size": 1048576,
+          "file": "ru-wikipedia-1048576.json.gz",
+          "sha256": "596ab59a03a036a42fdf7413c035e695e5adc770da0a1e7a8e300f91f4f92851",
+          "requests": 1,
+          "spans": 102447
+        }
+      ],
+      "source_sha256": "db223f130c7e943f96e5ad1153e25231628d47b83510a85faff577c378ca912c",
+      "whitespace_scalars": 78164,
+      "number_scalars": 10119
+    },
+    {
+      "id": "ja-wikipedia",
+      "kind": "natural",
+      "file": "ja-wikipedia.txt.gz",
+      "sha256": "8c202706554b597785e3a671d14d865340fdb013eb339c3a1b57fbd352e9504f",
+      "compressed_sha256": "9bcb8ef91e1890d8762df31dde28aba3d1575d0f3af34635a771d4628e99d2d3",
+      "bytes": 1048575,
+      "scalars": 379280,
+      "ascii_fraction": 0.04245952840760079,
+      "whole_spans": 56514,
+      "max_span_bytes": 228,
+      "mean_span_bytes": 18.554252043741375,
+      "source_file": "ja-wikipedia.source.json",
+      "batches": [
+        {
+          "size": 256,
+          "file": "ja-wikipedia-256.json.gz",
+          "sha256": "46a146e6fa37ad76a888d0d96fb6a7277476d8b8df29f7d6458213fffb4da7e7",
+          "requests": 4113,
+          "spans": 60118
+        },
+        {
+          "size": 4096,
+          "file": "ja-wikipedia-4096.json.gz",
+          "sha256": "625c6375155f581d70925bda67745124e59a878ff43e236882b0606eb40f9ffa",
+          "requests": 257,
+          "spans": 56746
+        },
+        {
+          "size": 65536,
+          "file": "ja-wikipedia-65536.json.gz",
+          "sha256": "e634235bca882e6857c38deb58c67b2a741e6cd3f63cea03e3a5cacf193648f4",
+          "requests": 17,
+          "spans": 56530
+        },
+        {
+          "size": 1048576,
+          "file": "ja-wikipedia-1048576.json.gz",
+          "sha256": "c143516edf7ef30a4d7f277a6cb735bc713580e0c67f339b41896d0cf4f6fa6d",
+          "requests": 1,
+          "spans": 56514
+        }
+      ],
+      "source_sha256": "361db3395e94921b4417b04c27978b8926db0dd60be6f0a168dd33e49d4d789b",
+      "whitespace_scalars": 15580,
+      "number_scalars": 11747
+    },
+    {
+      "id": "ar-wikipedia",
+      "kind": "natural",
+      "file": "ar-wikipedia.txt.gz",
+      "sha256": "b0c6959075290e1ed20c5c1bf6f4f114fb9d3ab17237d681263bbc280507e8e5",
+      "compressed_sha256": "d3b11db3fee09dd6ceb86b1ac73a0d9d7b3dd8b5e1cd4107f1ea0a2584a583c8",
+      "bytes": 1048576,
+      "scalars": 584575,
+      "ascii_fraction": 0.11505985260009766,
+      "whole_spans": 123493,
+      "max_span_bytes": 35,
+      "mean_span_bytes": 8.490975196974727,
+      "source_file": "ar-wikipedia.source.json",
+      "batches": [
+        {
+          "size": 256,
+          "file": "ar-wikipedia-256.json.gz",
+          "sha256": "127d2d043b6adcdf72c04c842727b2d20b7318a6eff143be7a66a4549fb7fe59",
+          "requests": 4104,
+          "spans": 127039
+        },
+        {
+          "size": 4096,
+          "file": "ar-wikipedia-4096.json.gz",
+          "sha256": "89d61b1aa21b125cdddc4ae4cbd70c41503dde09a9e6d82c16cebb45de022d34",
+          "requests": 257,
+          "spans": 123724
+        },
+        {
+          "size": 65536,
+          "file": "ar-wikipedia-65536.json.gz",
+          "sha256": "e51870031d0fa03aa08d6ad9f2fe3254297f1b5e92c8739cd9b687244b47ef37",
+          "requests": 17,
+          "spans": 123508
+        },
+        {
+          "size": 1048576,
+          "file": "ar-wikipedia-1048576.json.gz",
+          "sha256": "8175df07ef25d20ba5d1c90cf7545a6f668dcd6e7f1e84d62ded50ee0b442d00",
+          "requests": 1,
+          "spans": 123493
+        }
+      ],
+      "source_sha256": "b361a623ccb32c15b9a92be4dd4b3378e072b4275fc83141b2ddce154b18b56e",
+      "whitespace_scalars": 100047,
+      "number_scalars": 8446
+    },
+    {
+      "id": "zh-wikipedia",
+      "kind": "natural",
+      "file": "zh-wikipedia.txt.gz",
+      "sha256": "5bb1dfc3f37f1ca91cefb081d24fdaab1ca523a0d4c92e40e1dbe71c2145e8d7",
+      "compressed_sha256": "f87175a5a13b8c307737ccb7b26e6a45833309f1c58a9c316c22862cd4bb39c9",
+      "bytes": 1048574,
+      "scalars": 390203,
+      "ascii_fraction": 0.05777846866315587,
+      "whole_spans": 62146,
+      "max_span_bytes": 156,
+      "mean_span_bytes": 16.872751263154505,
+      "source_file": "zh-wikipedia.source.json",
+      "batches": [
+        {
+          "size": 256,
+          "file": "zh-wikipedia-256.json.gz",
+          "sha256": "c87bfb804eae92fad7978cd640c4ba0a79f07e421336ca92a2213c072a059966",
+          "requests": 4113,
+          "spans": 65631
+        },
+        {
+          "size": 4096,
+          "file": "zh-wikipedia-4096.json.gz",
+          "sha256": "4919da3ceecc3d11072deef63f3bd068d87fff6b2b92f521fcb2d37768d11c57",
+          "requests": 257,
+          "spans": 62370
+        },
+        {
+          "size": 65536,
+          "file": "zh-wikipedia-65536.json.gz",
+          "sha256": "483c3f4d188d4bc772a40a5e6d82e653dcb4bcd6e9915ea0883485db9f6482ae",
+          "requests": 17,
+          "spans": 62157
+        },
+        {
+          "size": 1048576,
+          "file": "zh-wikipedia-1048576.json.gz",
+          "sha256": "00c5d0621423876e5eb07d2ce5f3e462cbef422ac461a97f317bc8c6e4f1e5e4",
+          "requests": 1,
+          "spans": 62146
+        }
+      ],
+      "source_sha256": "42acec3438f1f7d590736d69833a7b66a62a85f5fbae47e99ce21c0cef6c4ffb",
+      "whitespace_scalars": 14292,
+      "number_scalars": 12554
+    },
+    {
+      "id": "synthetic",
+      "kind": "synthetic",
+      "file": "synthetic.txt.gz",
+      "sha256": "6dad241226d6b827c02ff37f52d17251b94d14196f48b867d224ff31e5cec314",
+      "compressed_sha256": "42e09b1327f5857fba4087ed1936fb976f7d10f40cf8cd357c1f4c88fa59607c",
+      "bytes": 270224,
+      "scalars": 173784,
+      "ascii_fraction": 0.4289774409378886,
+      "whole_spans": 38801,
+      "max_span_bytes": 57912,
+      "mean_span_bytes": 6.964356588747712,
+      "source_file": null,
+      "batches": [
+        {
+          "size": 0,
+          "file": "synthetic-0.json.gz",
+          "sha256": "ec77aa3a591cec31acd31c48de11cdc51983743c7d664678797e13971ebe9808",
+          "requests": 384,
+          "spans": 39003
+        }
+      ],
+      "whitespace_scalars": 67508,
+      "number_scalars": 19288
+    }
+  ]
+}

@@ -175,6 +175,12 @@ packages are deferred until broader recognition is needed.
 
 ## Performance and validation
 
+[Benchmark methodology](docs/Benchmark.md) defines the implemented Oniguruma and
+native HF comparisons, multilingual corpus, timing boundaries, and report metrics.
+See [benchmark/README.md](benchmark/README.md) to build and run the offline suite.
+The first [Apple M5 scalar report](benchmark/results/P05/2026-09-09-apple-m5-scalar/REPORT.md)
+includes all languages and sizes, raw samples, and environment fingerprints.
+
 The [Regexp contract](docs/Regexp.md) lists the exact supported string and plan
 components. [Oracle regeneration](research/qwen/README.md) is separate from ordinary
 offline tests:
@@ -195,7 +201,7 @@ and scalar-versus-SIMD tests establish backend parity. Tests should cover Unicod
 contractions, number boundaries, punctuation, mixed whitespace, CR/LF, and EOF,
 as well as explicitly registered equivalent spellings and rejected unknown strings.
 
-Benchmarks will separate compilation cost from repeated scanning and report
+Benchmarks separate compilation cost from repeated scanning and report
 throughput, latency, and allocations. Both short prompts and long multilingual
 inputs matter. Performance claims must name the machine, Go version, backend,
 corpus, and comparison baseline, and include regressions.
