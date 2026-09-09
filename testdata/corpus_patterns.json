@@ -1,0 +1,77 @@
+[
+  {
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "[0-9][0-9][0-9]"
+  },
+  {
+    "pattern": "\\s+$"
+  },
+  {
+    "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "\\p{N}{1,3}"
+  },
+  {
+    "pattern": "\\s?[A-Za-z\u00b5\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u01ba\u01bc-\u01bf\u01c4-\u0293\u0295-\u02af\u0370-\u0373\u0376\u0377\u037b-\u037d\u037f\u0386\u0388-\u038a\u038c\u038e-\u03a1\u03a3-\u03f5\u03f7-\u0481\u048a-\u052f\u0531-\u0556\u10a0-\u10c5\u13a0-\u13f5\u13f8-\u13fd\u1c90-\u1cba\u1cbd-\u1cbf\u1d00-\u1d2b\u1d6b-\u1d77\u1d79-\u1d9a\u1e00-\u1f15\u1f18-\u1f1d\u1f20-\u1f45\u1f48-\u1f4d\u1f50-\u1f57\u1f59\u1f5b\u1f5d\u1f5f-\u1f7d\u1f80-\u1fb4\u1fb6-\u1fbc\u1fbe\u1fc2-\u1fc4\u1fc6-\u1fcc\u1fd0-\u1fd3\u1fd6-\u1fdb\u1fe0-\u1fec\u1ff2-\u1ff4\u1ff6-\u1ffc\u2102\u2107\u210a-\u2113\u2115\u2119-\u211d\u2124\u2126\u2128\u212a-\u212d\u212f-\u2134\u2139\u213c-\u213f\u2145-\u2149\u214e\u2183\u2184\u2c00-\u2c7b\u2c7e-\u2ce4\u2ceb-\u2cee\u2cf2\u2cf3\ua640-\ua66d\ua680-\ua69b\ua722-\ua76f\ua771-\ua787\ua78b-\ua78e\uab70-\uabbf\ufb00-\ufb06\ufb13-\ufb17\uff21-\uff3a\uff41-\uff5a\ud801\udc00-\ud801\udc4f\ud801\udcb0-\ud801\udcd3\ud801\udcd8-\ud801\udcfb\ud803\udc80-\ud803\udcb2\ud803\udcc0-\ud803\udcf2\ud806\udca0-\ud806\udcdf\ud83a\udd00-\ud83a\udd43]+"
+  },
+  {
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "\\A\\p{Nd}{1,2}(?=\\p{Nd}{3}+\\z)"
+  },
+  {
+    "pattern": "[\r\n]"
+  },
+  {
+    "pattern": "(?:[\\u4E00-\\u9FFF\\u3040-\\u309F\\u30A0-\\u30FF\\u3400-\\u4DBF\\uf900-\\uFAFF\\uFF65-\\uFF9F\\u2F00-\\u2FDF]+|[\\u0E00-\\u0E7F]+|[\\u0E80-\\u0EFF]+|[\\u1780-\\u17FF]+|[\\u1000-\\u109F\\uAA60-\\uAA7F\\uA9E0-\\uA9FF]+|[\\uAC00-\\uD7AF\\u1100-\\u11FF]+)"
+  },
+  {
+    "pattern": "'(?i:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "\\A\\p{Nd}{3}|\\G\\p{Nd}{3}"
+  },
+  {
+    "pattern": "\\p{Hangul}+|[\uff01\u2026\u201c\u201d\u2018\u2019\u2014\uff1a\uff1b\uff0c\u3001-\u303f\ufe30-\ufe4f]+|[\u3105-\u312f]+|[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]+"
+  },
+  {
+    "pattern": "[0-9]"
+  },
+  {
+    "pattern": "[\u4e00-\u9fa5\u0800-\u4e00\uac00-\ud7ff]+"
+  },
+  {
+    "pattern": "\\s?[!-/:-~\uff01-\uff0f\uff1a-\uff5e\u2018-\u201f\u3000-\u3002]+"
+  },
+  {
+    "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}+| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "[\u4e00-\u9fa5\u3040-\u309f\u30a0-\u30ff]+"
+  },
+  {
+    "pattern": "[!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~][A-Za-z]+|[^\r\n\\p{L}\\p{P}\\p{S}]?[\\p{L}\\p{M}]+| ?[\\p{P}\\p{S}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": " ?[^(\\s|[.,!?\u2026\u3002\uff0c\u3001\u0964\u06d4\u060c])]+"
+  },
+  {
+    "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
+  },
+  {
+    "pattern": "\\p{Nd}{1,510}(?=(?>\\p{Nd}{510})*(?:\\P{Nd}|$))|\\G\\p{Nd}{510}"
+  }
+]
