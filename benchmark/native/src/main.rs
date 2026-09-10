@@ -23,6 +23,10 @@ struct Pattern {
     pattern: String,
     pattern_sha256: String,
     fixture_sha256: String,
+    #[serde(default)]
+    fixture_pattern: Option<String>,
+    #[serde(default)]
+    full_coverage: bool,
 }
 #[derive(Deserialize)]
 struct Manifest {
@@ -197,6 +201,16 @@ fn main() -> Result<()> {
         true,
     )?;
     // The wheel oracle and the newly resolved native build must agree before any timing.
+    let guard_pattern = selected
+        .fixture_pattern
+        .as_deref()
+        .unwrap_or(&selected.pattern);
+    let guard_re = Regex::new(guard_pattern)?;
+    let guard_split = Split::new(
+        SplitPattern::Regex(guard_pattern.to_owned()),
+        SplitDelimiterBehavior::Isolated,
+        false,
+    )?;
     let fixture_data = gunzip(Path::new(&args[2]), &selected.fixture_sha256)?;
     let mut fixture_count = 0;
     for line in fixture_data
@@ -209,7 +223,7 @@ fn main() -> Result<()> {
             "hf-split",
             "original fixture",
             &f.input,
-            &hf_spans(&split, &f.input)?,
+            &hf_spans(&guard_split, &f.input)?,
             &want,
         )?;
         let matches: Vec<_> = f.matches.iter().map(|s| (s.start, s.end)).collect();
@@ -217,14 +231,14 @@ fn main() -> Result<()> {
             "onig-iter",
             "original fixture",
             &f.input,
-            &re.find_iter(&f.input).collect::<Vec<_>>(),
+            &guard_re.find_iter(&f.input).collect::<Vec<_>>(),
             &matches,
         )?;
         equal(
             "onig-at",
             "original fixture",
             &f.input,
-            &at_spans(&re, &f.input)?,
+            &at_spans(&guard_re, &f.input)?,
             &matches,
         )?;
         fixture_count += 1;
@@ -281,7 +295,7 @@ fn main() -> Result<()> {
     writeln!(
         output,
         "{}",
-        serde_json::json!({"ready":true,"fixtures":fixture_count,"batches":batches.len(),"tokenizers":"0.22.2"})
+        serde_json::json!({"ready":true,"fixtures":fixture_count,"fixture_pattern":guard_pattern,"full_coverage":selected.full_coverage,"batches":batches.len(),"tokenizers":"0.22.2"})
     )?;
     output.flush()?;
     for line in io::stdin().lock().lines() {
@@ -300,6 +314,7 @@ fn main() -> Result<()> {
                 &key.0,
                 key.1,
                 &selected.pattern_sha256,
+                selected.full_coverage,
             );
             match result {
                 Ok(value) => writeln!(output, "{}", serde_json::to_string(&value)?)?,
@@ -308,7 +323,9 @@ fn main() -> Result<()> {
             output.flush()?;
             continue;
         }
-        let result = if command.op == "compile" {
+        let result = if command.engine == "onig-at" && !selected.full_coverage {
+            Err("match-at diagnostic requires a fully covering pattern".into())
+        } else if command.op == "compile" {
             compile_sample(&selected.pattern, &command.engine, command.min_ms)
         } else {
             let batch = batches
@@ -347,6 +364,7 @@ fn reference(
     corpus: &str,
     size: usize,
     pattern_sha: &str,
+    full_coverage: bool,
 ) -> Result<Reference> {
     batch.verified = false;
     let mut requests = Vec::new();
@@ -367,7 +385,9 @@ fn reference(
             &matches,
         )?;
         // Match-at is currently a diagnostic for the fully covering P01/P05 plans.
-        equal("onig-at", &label, src, &at_spans(re, src)?, &matches)?;
+        if full_coverage {
+            equal("onig-at", &label, src, &at_spans(re, src)?, &matches)?;
+        }
         total += spans.len();
         match_count += matches.len();
         capacity = capacity.max(spans.len());

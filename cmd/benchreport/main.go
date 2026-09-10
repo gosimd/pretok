@@ -151,7 +151,7 @@ func main() {
 	}
 }
 func run() error {
-	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01 or P05")
+	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01, P02 or P05")
 	root := flag.String("root", ".", "repository root")
 	corpus := flag.String("corpus", "benchmark/corpus", "corpus path relative to root")
 	reference := flag.String("native", "benchmark/native/target/release/pretok-reference", "native executable path relative to root")
@@ -185,6 +185,8 @@ func run() error {
 	switch *patternID {
 	case "P01":
 		fixture, expectedPattern = "testdata/patterns/P01/cases.jsonl.gz", compile.QwenMarksPattern
+	case "P02":
+		expectedPattern = compile.ASCIITriplesPattern
 	case "P05":
 	default:
 		return fmt.Errorf("unsupported benchmark pattern %q", *patternID)
@@ -268,7 +270,7 @@ func run() error {
 		}
 		return raw.Sync()
 	}
-	engines := bench.Engines()
+	engines := bench.Engines(manifest.FullCoverage)
 	for index := range selected {
 		b := &selected[index]
 		operations := map[string]func() uint64{}

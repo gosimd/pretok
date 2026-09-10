@@ -18,9 +18,11 @@ import (
 )
 
 type PatternSpec struct {
-	Pattern    string `json:"pattern"`
-	PatternSHA string `json:"pattern_sha256"`
-	FixtureSHA string `json:"fixture_sha256"`
+	FullCoverage   bool   `json:"full_coverage"`
+	FixturePattern string `json:"fixture_pattern"`
+	Pattern        string `json:"pattern"`
+	PatternSHA     string `json:"pattern_sha256"`
+	FixtureSHA     string `json:"fixture_sha256"`
 }
 type Manifest struct {
 	Schema   int                    `json:"schema"`

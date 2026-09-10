@@ -1,5 +1,18 @@
 package scan
 
+// asciiTriplet matches exactly three ASCII digits. The length and each byte
+// are checked before consumption; a failed partial match consumes nothing.
+type asciiTriplet struct{}
+
+func (asciiTriplet) match(src string, pos int) int {
+	if len(src)-pos >= 3 && asciiDigit(src[pos]) && asciiDigit(src[pos+1]) && asciiDigit(src[pos+2]) {
+		return pos + 3
+	}
+	return pos
+}
+
+func asciiDigit(b byte) bool { return b >= '0' && b <= '9' }
+
 // contractionSet implements (?i:'s|'t|'re|'ve|'m|'ll|'d). There is no
 // word-boundary assertion. Case folds are generated from the pinned oracle.
 type contractionSet struct{}

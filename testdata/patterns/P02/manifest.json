@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P02",
+  "pattern": "[0-9][0-9][0-9]",
+  "pattern_sha256": "163dd89509292f5cc3f0bcace529181dedb4482be045256aa20f52a1f78ac3d2",
+  "source": {
+    "model_id": "tiiuae/falcon-7b",
+    "revision": "ec89142b67d748a1865ea4451372db8313ada0d8",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/tiiuae/falcon-7b/blob/ec89142b67d748a1865ea4451372db8313ada0d8/tokenizer.json",
+    "sha256": "d6c5cdac1421ea998722aa88ea1cb630b2a9ec63bf8a85331bb3d9d321507186",
+    "json_pointer": "/pre_tokenizer/pretokenizers/3/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored P02 output arrays."
+}

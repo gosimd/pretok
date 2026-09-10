@@ -6,11 +6,11 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for two exact regex strings: P05 (Qwen
-letter-only words) and P01 (letters and marks). Both use single Unicode numbers
-and share one parameterized scanner template. `Compile`, `Cursor`, and `Split`
-are checked against pinned Hugging Face fixtures. The other 23 corpus strings
-remain unsupported. No SIMD backend is implemented.
+**Status:** scalar implementation for three exact regex strings: P05 (Qwen
+letter-only words), P01 (letters and marks), and P02 (exactly three ASCII digits).
+P01/P05 share one parameterized scanner template; P02 reuses the public cursor
+and gap handling. `Compile`, `Cursor`, and `Split` are checked against pinned
+Hugging Face references. The other 22 corpus strings remain unsupported. No SIMD backend is implemented.
 
 ## Scope
 
@@ -153,8 +153,9 @@ The first [research survey](research/pretokenize_regex/README.md) collects expli
 [results and pinned sources](research/pretokenize_regex/TOKENIZER_REPORT.md).
 It preserves surrounding split settings. Discovery alone does not establish
 support. The initial P05 implementation has
-its own [oracle fixtures](testdata/qwen/manifest.json); P01 has [separate fixtures](testdata/patterns/P01/manifest.json) and a [maintained regeneration script](testdata/patterns/README.md). Full tokenizer compatibility
-is outside this package.
+its own [oracle fixtures](testdata/qwen/manifest.json); P01 has [separate fixtures](testdata/patterns/P01/manifest.json) and a [maintained regeneration script](testdata/patterns/README.md). P02 has [source metadata](testdata/patterns/P02/manifest.json); its references
+are generated in memory by the common benchmark pipeline. Full tokenizer
+compatibility is outside this package.
 
 The [structural and semantic analysis](research/regex_analysis/ANALYSIS.md) groups
 the observed alternatives into parameterized scanner operations and records
@@ -183,7 +184,7 @@ The [P01 Apple M5 scalar report](benchmark/results/P01/2026-09-10-apple-m5-scala
 and [original P05 report](benchmark/results/P05/2026-09-09-apple-m5-scalar/REPORT.md)
 include all languages and sizes, raw samples, and environment fingerprints.
 
-The [Regexp contract](docs/Regexp.md) lists the exact supported string and plan
+The [Regexp contract](docs/Regexp.md) lists the exact supported strings and plan
 components. [Oracle regeneration](research/qwen/README.md) is separate from ordinary
 offline tests:
 
@@ -192,9 +193,13 @@ go test ./...
 go test -race ./...
 go test -run '^$' -fuzz FuzzQwenPartition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP01Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP02Partition -fuzztime 10s .
 ```
 
-The checked-in fixtures contain 7,738 P05 cases and 26,820 P01 cases. Unicode class membership and the
+The checked-in fixtures contain 7,738 P05 cases and 26,820 P01 cases. P02 uses
+small inline regressions, offline differential fuzzing against Go regexp, and
+live HF comparison on every common benchmark request; it adds no stored output
+archives. Unicode class membership and the
 contraction case folds are generated from every Unicode scalar using the pinned
 native oracle, rather than Go's evolving Unicode tables. These checks establish
 bounded differential evidence, not proof of all input combinations.

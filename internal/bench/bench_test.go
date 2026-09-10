@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -33,7 +34,7 @@ func fixture(t *testing.T, text string) (string, Manifest) {
 		t.Fatal(err)
 	}
 	profiles := map[string]PatternSpec{}
-	for id, p := range map[string]string{"P01": compile.QwenMarksPattern, "P05": compile.QwenPattern} {
+	for id, p := range map[string]string{"P01": compile.QwenMarksPattern, "P02": compile.ASCIITriplesPattern, "P05": compile.QwenPattern} {
 		profiles[id] = PatternSpec{Pattern: p, PatternSHA: Digest([]byte(p))}
 	}
 	m := Manifest{Schema: 3, Patterns: profiles, Corpora: []CorpusSpec{{ID: "test", Kind: "natural", File: "text.gz", SHA: Digest([]byte(text)), CompressedSHA: Digest(compressed.Bytes()), Bytes: len(text), Scalars: utf8.RuneCountInString(text), Batches: []BatchSpec{{Size: 256, File: "requests.json", SHA: Digest(request), Requests: 1}}}}}
@@ -202,5 +203,45 @@ func TestSharedCorpusManifest(t *testing.T) {
 	}
 	if _, _, err := Load(dir, "P99"); err == nil {
 		t.Fatal("unknown profile accepted")
+	}
+}
+
+func TestP02LiveGateWithGaps(t *testing.T) {
+	for _, tc := range []struct {
+		text           string
+		matches, split [][2]int
+	}{
+		{"a123b12", [][2]int{{1, 4}}, [][2]int{{0, 1}, {1, 4}, {4, 7}}},
+		{"１２3", nil, [][2]int{{0, 7}}},
+		{"", nil, nil},
+	} {
+		dir, _ := fixture(t, tc.text)
+		m, batches, err := Load(dir, "P02")
+		if err != nil {
+			t.Fatal(err)
+		}
+		b := &batches[0]
+		re, err := pretok.Compile(m.Pattern)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = Verify(re, m.PatternSHA, b, reference(*b, m.Pattern, tc.matches, tc.split)); err != nil {
+			t.Fatal(err)
+		}
+		if b.OutputCount("pretok-cursor") != len(tc.matches) || b.OutputCount("onig-iter") != len(tc.matches) || b.OutputCount("pretok-reused") != len(tc.split) || b.OutputCount("hf-split") != len(tc.split) {
+			t.Fatal("matches and isolated split counts conflated")
+		}
+		for _, engine := range []string{"pretok-cursor", "pretok-reused", "pretok-fresh"} {
+			op, err := Operation(re, b, engine)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if op() != op() {
+				t.Fatal("operation not repeatable")
+			}
+		}
+	}
+	if slices.Contains(Engines(false), "onig-at") || !slices.Contains(Engines(true), "onig-at") {
+		t.Fatal("match-at diagnostic scope")
 	}
 }

@@ -4,9 +4,9 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01 and P05
-through a shared scalar template with immutable word/symbol parameters. The other
-23 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01, P02, and P05.
+P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
+an ASCII-triplet plan. The other 22 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
 ## Supported expressions
@@ -59,9 +59,28 @@ whitespace scalar for the following match when possible. Higher-priority word
 and symbol alternatives are always tried first. Cuts never subtract a byte from
 a multibyte whitespace character.
 
-Both regexes cover all valid Unicode input, so `Cursor` and `Split` currently emit
-the same spans. Their distinct gap-handling contracts remain relevant for future
-patterns. There is no normalization, ByteLevel mapping, or BPE processing here.
+P01/P05 cover all valid Unicode input, so their `Cursor` and `Split` outputs
+coincide. P02 exercises their distinct gap-handling contracts:
+
+```regex
+[0-9][0-9][0-9]
+```
+
+P02's `asciiTriplet` matches exactly three consecutive ASCII digits. It groups a
+long digit run from the left, without consuming an incomplete group. Unicode
+numbers outside ASCII do not match. The existing cursor searches past unmatched
+scalars; the existing `Split` preserves each maximal gap. For `x123456y12`:
+
+- `Cursor`: `[1,4)`, `[4,7)` — `123`, `456`.
+- `Split`: `[0,1)`, `[1,4)`, `[4,7)`, `[7,10)` — `x`, `123`, `456`, `y12`.
+
+`12a34` has no matches and produces one isolated piece. Empty input produces none.
+The equivalent spelling `[0-9]{3}` is deliberately unregistered.
+[P02 source metadata](../testdata/patterns/P02/manifest.json) pins its occurrence
+in tiiuae/falcon-7b. Live HF references use Removed/invert=true for matches and
+Isolated/invert=false for splits; no new output archive is stored.
+
+There is no normalization, ByteLevel mapping, or BPE processing here.
 
 ## API
 
@@ -88,7 +107,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01 and P05 are implemented; the remaining strings are future
+unique strings. P01, P02, and P05 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

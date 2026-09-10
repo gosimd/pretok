@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Explicit online preparation; generated corpus and reference files run offline."""
+"""Explicit online preparation; generated corpus inputs run offline."""
 import argparse
 import gzip
 import hashlib
 import io
+import itertools
 import json
 from pathlib import Path
 import time
@@ -108,11 +109,16 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P05','testdata/qwen')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P05','testdata/qwen')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
-        patterns[ident]['fixture_sha256']=sha((fixture_dir/'cases.jsonl.gz').read_bytes())
+        # P02 has no stored outputs: retain the existing P05 native-build guard.
+        guard_dir=ROOT/'testdata/qwen' if ident=='P02' else fixture_dir
+        guard=json.loads((guard_dir/'manifest.json').read_text())
+        patterns[ident]['fixture_pattern']=guard['pattern']
+        patterns[ident]['fixture_sha256']=sha((guard_dir/'cases.jsonl.gz').read_bytes())
+        patterns[ident]['full_coverage']=ident in ('P01','P05')
     manifest={'schema':3,'patterns':patterns,
               'generator_sha256':sha(Path(__file__).read_bytes()),
               'selection':'Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.', 'corpora':[]}
@@ -129,9 +135,14 @@ def main():
         pools.append((ident,'natural',data,info,[ (size,cuts(data,size)) for size in [256,4096,65536,1048576] ]))
     data=bytearray();ranges=[]
     for token in ['a','Ж','中','😀','\u0301','1','²',"'re ",'!',' ','\u2003',' \r\n\t']:
-        for n in [1,2,3,15,16,17,31,32,33,63,64,65,127,128,129,4096]:
+        for n in [1,2,3,4,5,6,7,8,15,16,17,31,32,33,63,64,65,127,128,129,4096]:
             for suffix in ['', 'X']:
                 start=len(data);data.extend((token*n+suffix).encode());ranges.append((start,len(data)))
+    # Common gap/ASCII-number diagnostics, shared by every pattern.
+    # Exhaustive short subjects expose partial matches and UTF-8 transitions.
+    for n in range(6):
+        for chars in itertools.product(['0','9','a','１','²','😀'],repeat=n):
+            start=len(data);data.extend(''.join(chars).encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:
         name=ident+'.txt.gz'; compressed=write_gzip(dest/name,data)

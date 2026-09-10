@@ -10,6 +10,10 @@ type Plan struct {
 
 func (p *Plan) Match(src string, pos int) int { return p.match(src, pos) }
 
+// ASCIITriples builds P02. Cursor owns searching past unmatched scalars;
+// Split owns preserving maximal gaps, including short digit-run residues.
+func ASCIITriples() Plan { return Plan{match: asciiTriplet{}.match} }
+
 // Qwen builds the P05 plan. The template fixes alternative order; components
 // implement only the constructions used by this exact expression.
 func Qwen() Plan {

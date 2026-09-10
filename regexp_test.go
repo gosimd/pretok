@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -16,6 +17,8 @@ import (
 
 	"github.com/gosimd/pretok"
 )
+
+const patternTriples = `[0-9][0-9][0-9]`
 
 const patternMarks = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
 
@@ -159,7 +162,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 	count := 0
 	for _, row := range rows {
 		re, err := pretok.Compile(row.Pattern)
-		if row.Pattern == pattern || row.Pattern == patternMarks {
+		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
@@ -168,10 +171,10 @@ func TestSupportedCorpusStrings(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 2 {
+	if count != 3 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
-	for _, p := range []string{"", "[", ".*", "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
+	for _, p := range []string{"", "[", ".*", `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
 		if re, err := pretok.Compile(p); re != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
 			t.Fatalf("accepted unknown %q", p)
 		}
@@ -179,11 +182,11 @@ func TestSupportedCorpusStrings(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P05": pattern} {
-		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p)) })
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P05": pattern} {
+		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
-func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp) {
+func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 	storage := make([]pretok.Span, 32)
 	for i := range storage {
 		storage[i] = pretok.Span{Start: 91, End: 92}
@@ -214,7 +217,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp) {
 	if err != nil || &got[0] != &storage[0] || got[0] != before[0] {
 		t.Fatal("append/reuse contract")
 	}
-	if want := collect(t, re, "a  b"); !slices.Equal(got[1:], want) {
+	if want, err := re.Split("a  b", nil); err != nil || !slices.Equal(got[1:], want) {
 		t.Fatal("appended spans differ")
 	}
 	empty, err := re.Split("", got)
@@ -225,7 +228,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp) {
 	if span, ok := zero.Next(); ok || span != (pretok.Span{}) {
 		t.Fatal("zero cursor not exhausted")
 	}
-	c, _ := re.Cursor("a b")
+	c, _ := re.Cursor("123456")
 	c.Next()
 	copy := c
 	if a, ok := c.Next(); !ok {
@@ -234,19 +237,27 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp) {
 		t.Fatal("cursor copy shares progress")
 	}
 	piece := strings.TrimPrefix("prefix\u2003\u2003X", "prefix")
-	if want := []pretok.Span{{0, 3}, {3, 7}}; !slices.Equal(collect(t, re, piece), want) {
+	want := []pretok.Span{{0, 3}, {3, 7}}
+	if pattern == patternTriples {
+		want = nil
+	}
+	if !slices.Equal(collect(t, re, piece), want) {
 		t.Fatal("offsets not relative to subject")
 	}
+
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P05": pattern} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P05": pattern} {
 		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
 	}
 }
 func testConcurrentReuse(t *testing.T, re *pretok.Regexp) {
-	text := "We're １２3\r\n\u2003\u2003世界!"
-	want := collect(t, re, text)
+	text := "We're 1234567 １２3\r\n\u2003\u2003世界!"
+	want, err := re.Split(text, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var wg sync.WaitGroup
 	for range 16 {
 		wg.Add(1)
@@ -266,10 +277,11 @@ func testConcurrentReuse(t *testing.T, re *pretok.Regexp) {
 	wg.Wait()
 }
 
+func FuzzP02Partition(f *testing.F)  { fuzzPartition(f, patternTriples) }
 func FuzzP01Partition(f *testing.F)  { fuzzPartition(f, patternMarks) }
 func FuzzQwenPartition(f *testing.F) { fuzzPartition(f, pattern) }
 func fuzzPartition(f *testing.F, pattern string) {
-	for _, s := range []string{"", "we're", "\u2003\u2003X", "a\u0301b", "²Ⅳ１２3", "\r\n\tX", "\xff"} {
+	for _, s := range []string{"", "we're", "x123456y12", "１２３123١٢٣", "\u2003\u2003X", "a\u0301b", "²Ⅳ１２3", "\r\n\tX", "\xff"} {
 		f.Add(s)
 	}
 	re := compiledPattern(f, pattern)
@@ -285,8 +297,10 @@ func fuzzPartition(f *testing.F, pattern string) {
 			t.Fatal(err)
 		}
 		assertPartition(t, src, got)
-		// This exact pattern covers every scalar; both APIs must agree.
-		if !slices.Equal(got, collect(t, re, src)) {
+		// P01/P05 cover every scalar. P02 also needs independent gap checks.
+		if pattern == patternTriples {
+			assertP02Reference(t, re, src)
+		} else if !slices.Equal(got, collect(t, re, src)) {
 			t.Fatal("cursor/split mismatch")
 		}
 	})
@@ -334,6 +348,8 @@ func BenchmarkCompile(b *testing.B) {
 func BenchmarkQwenSplit(b *testing.B)      { benchmarkSplit(b, pattern, false) }
 func BenchmarkQwenSplitFresh(b *testing.B) { benchmarkSplit(b, pattern, true) }
 func BenchmarkP01Split(b *testing.B)       { benchmarkSplit(b, patternMarks, false) }
+func BenchmarkP02Split(b *testing.B)       { benchmarkSplit(b, patternTriples, false) }
+func BenchmarkP02SplitFresh(b *testing.B)  { benchmarkSplit(b, patternTriples, true) }
 func BenchmarkP01SplitFresh(b *testing.B)  { benchmarkSplit(b, patternMarks, true) }
 
 func benchmarkSplit(b *testing.B, pattern string, fresh bool) {
@@ -386,6 +402,78 @@ func TestP01Marks(t *testing.T) {
 		}
 		if !slices.Equal(pieces, tc.pieces) {
 			t.Errorf("%q: got %q want %q", tc.text, pieces, tc.pieces)
+		}
+	}
+}
+
+// RE2 supports this ASCII-only expression; HF remains the external compatibility
+// oracle in the massive-testing pipeline. This comparator keeps fuzzing offline.
+var p02Reference = regexp.MustCompile(`[0-9]{3}`)
+
+func assertP02Reference(t testing.TB, re *pretok.Regexp, src string) {
+	t.Helper()
+	var matches, split []pretok.Span
+	end := 0
+	for _, pair := range p02Reference.FindAllStringIndex(src, -1) {
+		if pair[0] > end {
+			split = append(split, pretok.Span{Start: end, End: pair[0]})
+		}
+		span := pretok.Span{Start: pair[0], End: pair[1]}
+		matches = append(matches, span)
+		split = append(split, span)
+		end = pair[1]
+	}
+	if end < len(src) {
+		split = append(split, pretok.Span{Start: end, End: len(src)})
+	}
+	if got := collect(t, re, src); !slices.Equal(got, matches) {
+		t.Fatalf("%q: matches %v want %v", src, got, matches)
+	}
+	if got, err := re.Split(src, nil); err != nil || !slices.Equal(got, split) {
+		t.Fatalf("%q: split %v want %v: %v", src, got, split, err)
+	}
+
+}
+
+func TestP02Gaps(t *testing.T) {
+	re := compiledPattern(t, patternTriples)
+	// Pieces observed with HF Tokenizers 0.22.2, Isolated / invert=false.
+	for _, tc := range []struct {
+		text   string
+		pieces []string
+	}{
+		{"", nil},
+		{"12a34", []string{"12a34"}},
+		{"1234567", []string{"123", "456", "7"}},
+		{"x123y456z12", []string{"x", "123", "y", "456", "z12"}},
+		{"１２３123١٢٣", []string{"１２３", "123", "١٢٣"}},
+		{"123\r\n45", []string{"123", "\r\n45"}},
+		{"a123456b", []string{"a", "123", "456", "b"}},
+	} {
+		spans, err := re.Split(tc.text, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pieces []string
+		for _, s := range spans {
+			pieces = append(pieces, tc.text[s.Start:s.End])
+		}
+		if !slices.Equal(pieces, tc.pieces) {
+			t.Errorf("%q: pieces %q want %q", tc.text, pieces, tc.pieces)
+		}
+		assertPartition(t, tc.text, spans)
+		assertP02Reference(t, re, tc.text)
+	}
+	// Every residue and UTF-8 transition around common vector/tail boundaries.
+	for _, n := range []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 15, 16, 17, 31, 32, 33, 63, 64, 65, 4096} {
+		for _, sep := range []string{"", "a", "１", "١", "²", "😀", "\r\n", "\u0301", "/:"} {
+			src := sep + strings.Repeat("1", n) + sep + "12" + sep + "345" + sep
+			assertP02Reference(t, re, src)
+			spans, err := re.Split(src, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertPartition(t, src, spans)
 		}
 	}
 }

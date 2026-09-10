@@ -14,7 +14,15 @@ const QwenMarksPattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\
 var qwen = scan.Qwen()
 var qwenMarks = scan.QwenMarks()
 
+// ASCIITriplesPattern is corpus P02; equivalent spellings are not aliases.
+const ASCIITriplesPattern = `[0-9][0-9][0-9]`
+
+var asciiTriples = scan.ASCIITriples()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == ASCIITriplesPattern {
+		return &asciiTriples, true
+	}
 	if pattern == QwenPattern {
 		return &qwen, true
 	}

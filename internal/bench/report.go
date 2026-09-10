@@ -128,6 +128,10 @@ func WriteReport(destination io.Writer, samples []Sample, environmentFile, patte
 	_, err := io.Copy(destination, &buffer)
 	return err
 }
-func Engines() []string {
-	return strings.Fields("pretok-cursor onig-iter pretok-reused onig-reused pretok-fresh onig-fresh hf-split onig-at")
+func Engines(fullCoverage bool) []string {
+	engines := strings.Fields("pretok-cursor onig-iter pretok-reused onig-reused pretok-fresh onig-fresh hf-split")
+	if fullCoverage {
+		engines = append(engines, "onig-at")
+	}
+	return engines
 }

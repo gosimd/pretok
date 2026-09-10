@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01 and P05, with five pinned natural-language pools,
+**Status:** implemented for scalar P01, P02, and P05, with five pinned natural-language pools,
 one synthetic pool, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
@@ -13,9 +13,11 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-Select P01 or P05 with `-pattern`. Each run uses one exact supported string and its
-own [P01](../testdata/patterns/P01/manifest.json) or
-[P05](../testdata/qwen/manifest.json) fixture manifest. Compile once before timing scans.
+Select P01, P02, or P05 with `-pattern`. Each run uses one exact supported string and its
+own [P01](../testdata/patterns/P01/manifest.json),
+[P02](../testdata/patterns/P02/manifest.json), or
+[P05](../testdata/qwen/manifest.json) provenance manifest. P02 stores no reference
+outputs; its native-build guard uses the existing P05 fixtures with the P05 regex. Compile once before timing scans.
 Use the exact same decoded regex, input bytes, subject boundaries, and output
 semantics in every comparison. Broader tokenizer pipelines are a later integration
 benchmark in `gosimd/bpe`.
@@ -200,6 +202,10 @@ pattern to make the comparison compile. Correctness, hashes, and corpus statisti
 are computed outside the measured interval. Corpus reference arrays are never
 persisted. Discard them after checking; retain only counts and buffer capacities.
 
+For P02, omit the match-at diagnostic: unmatched gaps are expected. Match-only
+rows count matches, while isolated-split rows include maximal gaps. A subject
+with no match still measures a complete scan; its match throughput is zero.
+
 ## Timing boundaries and runners
 
 Use a Go benchmark executable for pretok and a native Rust executable for the
@@ -295,6 +301,6 @@ selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
 Those files store only inputs. Each run generates reference spans for the chosen
 pattern in memory before checking all results and starting timers.
-Add any new scenarios to the common corpus. The runner selects P01 or P05 per
+Add any new scenarios to the common corpus. The runner selects P01, P02, or P05 per
 invocation. Broader support requires
 implementing and validating each additional pattern.

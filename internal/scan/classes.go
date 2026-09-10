@@ -35,7 +35,7 @@ func (c *wordClass) contains(r rune) bool {
 
 func number(r rune) bool {
 	if r < utf8.RuneSelf {
-		return r >= '0' && r <= '9'
+		return asciiDigit(byte(r))
 	}
 	return inRanges(r, numberRanges[:])
 }

@@ -9,11 +9,12 @@ One shared input corpus for all supported patterns. Source attribution and licen
 | ja-wikipedia | 1048575 | 379280 | 4.25% | [records](ja-wikipedia.source.json) |
 | ar-wikipedia | 1048576 | 584575 | 11.51% | [records](ar-wikipedia.source.json) |
 | zh-wikipedia | 1048574 | 390203 | 5.78% | [records](zh-wikipedia.source.json) |
-| synthetic | 270224 | 173784 | 42.90% | Generated |
+| synthetic | 361544 | 219714 | 38.47% | Generated |
 
-Each natural pool has 256-byte, 4096-byte, 65536-byte, and whole-pool batches. Boundaries are rounded down to UTF-8 scalar boundaries. Synthetic requests use explicit run lengths. Every request is a separate regex subject.
+Each natural pool has 256-byte, 4096-byte, 65536-byte, and whole-pool batches. Boundaries are rounded down to UTF-8 scalar boundaries. Synthetic requests use explicit run lengths (including all short digit residues)
+and exhaustive strings of length 0–5 over `0`, `9`, `a`, `１`, `²`, and `😀`. Every request is a separate regex subject.
 
-[manifest.json](manifest.json), schema 3, records regex profiles, input hashes, source provenance, and request counts. `.txt.gz` files hold only input text. Plain `*-SIZE.json` files hold only input ranges, for example:
+[manifest.json](manifest.json), schema 3, records regex profiles (including the native-build guard expression and full-coverage flag), input hashes, source provenance, and request counts. `.txt.gz` files hold only input text. Plain `*-SIZE.json` files hold only input ranges, for example:
 
 ```json
 [{"start":0,"end":4}]
