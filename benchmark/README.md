@@ -1,17 +1,20 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P05 regex. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01 and P05 regexes. It contains five approximately
 1 MiB natural text pools and a separate synthetic diagnostic pool. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
-The [completed Apple M5 run](results/P05/2026-09-09-apple-m5-scalar/REPORT.md) contains
-1,710 samples, with raw measurements and environment fingerprints. For 4 KiB
-requests across the five natural corpora, summed median batch times give 3.85×
-for Oniguruma span collection versus reused `pretok.Split`, and 6.23× for native
-HF Split versus reused `pretok.Split`. The latter includes HF stage bookkeeping;
-neither comparison measures BPE or a full tokenizer. These results apply to P05,
-the scalar backend, Go 1.27.0, and the pinned corpus on this machine.
+The [P01 Apple M5 report](results/P01/2026-09-10-apple-m5-scalar/REPORT.md)
+contains 1,710 samples with raw measurements and environment fingerprints. For
+4 KiB requests across the five natural corpora, summed median batch times give
+3.79× for Oniguruma span collection versus reused `pretok.Split`, and 6.00× for
+native HF Split versus reused `pretok.Split`. The latter includes HF stage
+bookkeeping; neither comparison measures BPE or a full tokenizer. These results
+apply to scalar P01, Go 1.27.0, and this pinned corpus on Apple M5.
+
+The [original P05 report](results/P05/2026-09-09-apple-m5-scalar/REPORT.md) is retained
+with its original source fingerprints. It predates the shared-class refactor.
 
 ## Build and run
 
@@ -26,8 +29,12 @@ From the repository root:
 cargo build --release --locked --manifest-path benchmark/native/Cargo.toml
 mkdir -p benchmark/bin
 go build -o benchmark/bin/benchreport ./cmd/benchreport
-benchmark/bin/benchreport -output benchmark/runs/my-run
+benchmark/bin/benchreport -pattern P01 -output benchmark/runs/p01-my-run
+benchmark/bin/benchreport -pattern P05 -output benchmark/runs/p05-my-run
 ```
+
+The default pattern is P05. Each invocation measures one pattern and records its
+ID in raw samples and environment metadata.
 
 Defaults are 10 samples, at least 500 ms each, all 21 corpus/size batches, eight
 scan engine/mode rows and three compilation rows. Expect roughly 15 minutes plus
@@ -83,7 +90,7 @@ To regenerate expected spans from already prepared pools without network access:
 ```
 
 Preparation records exact Python-wheel binary and output hashes. The native build
-then has to pass both the original 7,738 wheel-oracle fixtures and every generated
+then has to pass the selected pattern's wheel-oracle fixtures (26,820 for P01; 7,738 for P05) and every generated
 request before timing; matching a package version alone is insufficient. Unicode
 range changes require deliberate reference review, not automatic fixture updates.
 
@@ -92,3 +99,10 @@ approximately equal in UTF-8 bytes, not characters. Every 256 B, 4 KiB, 64 KiB, 
 whole-pool request is a separate regex subject. Synthetic requests use predefined
 run lengths around vector boundaries and are excluded from combined natural-text
 ratios. All maintained inputs and tools live outside ignored `research/`.
+
+Corpus preparation regenerates all supported patterns together in `corpus/`.
+There is one manifest and one request file per corpus/size. Each request stores its
+input range once and reference spans keyed by pattern ID. The runner's `-pattern`
+selects the expected spans and regex; it does not select different inputs or files.
+Add any new diagnostic scenarios to this shared corpus so all patterns receive
+the same workloads. See the [corpus format](corpus/README.md).
