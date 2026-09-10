@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"unicode/utf8"
 
 	"github.com/gosimd/pretok"
@@ -43,20 +42,22 @@ type CorpusSpec struct {
 	Batches       []BatchSpec `json:"batches"`
 }
 type BatchSpec struct {
-	Size     int            `json:"size"`
-	File     string         `json:"file"`
-	SHA      string         `json:"sha256"`
-	Requests int            `json:"requests"`
-	Spans    map[string]int `json:"spans"`
+	Size     int    `json:"size"`
+	File     string `json:"file"`
+	SHA      string `json:"sha256"`
+	Requests int    `json:"requests"`
 }
 type Request struct {
-	Text     string
-	Expected []pretok.Span
+	Text       string
+	Start, End int
 }
 type Batch struct {
 	ID, Kind                    string
 	Size, Bytes, Scalars, Spans int
 	Requests                    []Request
+	InputSHA                    string
+	Matches, Capacity           int
+	Verified                    bool
 }
 
 func Digest(data []byte) string { sum := sha256.Sum256(data); return hex.EncodeToString(sum[:]) }
@@ -66,7 +67,7 @@ func file(root, name string) (string, error) {
 	}
 	return filepath.Join(root, name), nil
 }
-func ReadGzip(root, name, sha string) ([]byte, error) {
+func readChecked(root, name, sha string) ([]byte, error) {
 	path, err := file(root, name)
 	if err != nil {
 		return nil, err
@@ -78,6 +79,13 @@ func ReadGzip(root, name, sha string) ([]byte, error) {
 	if Digest(raw) != sha {
 		return nil, fmt.Errorf("hash mismatch: %s", path)
 	}
+	return raw, nil
+}
+func ReadGzip(root, name, sha string) ([]byte, error) {
+	raw, err := readChecked(root, name, sha)
+	if err != nil {
+		return nil, err
+	}
 	r, err := gzip.NewReader(bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
@@ -86,8 +94,8 @@ func ReadGzip(root, name, sha string) ([]byte, error) {
 	return io.ReadAll(r)
 }
 
-// Load selects reference boundaries from the common corpus without changing
-// the text pools, request ranges, or workload selection.
+// Load reads only pinned input bytes and request ranges. Reference generation
+// and verification are a separate required step before measurement.
 func Load(root, patternID string) (Manifest, []Batch, error) {
 	var manifest Manifest
 	path, err := file(root, "manifest.json")
@@ -101,7 +109,7 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 	if err = json.Unmarshal(raw, &manifest); err != nil {
 		return manifest, nil, err
 	}
-	if manifest.Schema != 2 {
+	if manifest.Schema != 3 {
 		return manifest, nil, fmt.Errorf("unsupported corpus schema %d", manifest.Schema)
 	}
 	selected, ok := manifest.Patterns[patternID]
@@ -112,7 +120,7 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 	if Digest([]byte(manifest.Pattern)) != manifest.PatternSHA {
 		return manifest, nil, fmt.Errorf("invalid manifest schema or pattern hash")
 	}
-	re, err := pretok.Compile(manifest.Pattern)
+	_, err = pretok.Compile(manifest.Pattern)
 	if err != nil {
 		return manifest, nil, err
 	}
@@ -150,14 +158,13 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 				return manifest, nil, fmt.Errorf("duplicate size for %s", c.ID)
 			}
 			sizes[spec.Size] = true
-			raw, err := ReadGzip(root, spec.File, spec.SHA)
+			raw, err := readChecked(root, spec.File, spec.SHA)
 			if err != nil {
 				return manifest, nil, err
 			}
 			var cases []struct {
-				Start int                 `json:"start"`
-				End   int                 `json:"end"`
-				Spans map[string][][2]int `json:"spans"`
+				Start int `json:"start"`
+				End   int `json:"end"`
 			}
 			if err = json.Unmarshal(raw, &cases); err != nil {
 				return manifest, nil, err
@@ -165,7 +172,7 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 			if len(cases) != spec.Requests {
 				return manifest, nil, fmt.Errorf("request count mismatch")
 			}
-			b := Batch{ID: c.ID, Kind: c.Kind, Size: spec.Size}
+			b := Batch{ID: c.ID, Kind: c.Kind, Size: spec.Size, InputSHA: c.SHA}
 			previous := 0
 			for i, tc := range cases {
 				if tc.Start != previous || tc.End < tc.Start || tc.End > len(text) || !utf8.ValidString(text[tc.Start:tc.End]) {
@@ -173,47 +180,11 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 				}
 				previous = tc.End
 				src := text[tc.Start:tc.End]
-				spans, ok := tc.Spans[patternID]
-				if !ok {
-					return manifest, nil, fmt.Errorf("missing %s reference in %s/%d request %d", patternID, c.ID, spec.Size, i)
-				}
-				want := make([]pretok.Span, len(spans))
-				end := 0
-				for j, s := range spans {
-					if s[0] != end || s[1] <= s[0] || s[1] > len(src) || !utf8.ValidString(src[s[0]:s[1]]) {
-						return manifest, nil, fmt.Errorf("invalid reference span %s/%d/%d/%d", c.ID, spec.Size, i, j)
-					}
-					want[j] = pretok.Span{Start: s[0], End: s[1]}
-					end = s[1]
-				}
-				if end != len(src) {
-					return manifest, nil, fmt.Errorf("incomplete reference partition")
-				}
-				got, err := re.Split(src, nil)
-				if err != nil {
-					return manifest, nil, err
-				}
-				if !slices.Equal(got, want) {
-					return manifest, nil, mismatch("pretok-split", c.ID, spec.Size, i, src, got, want)
-				}
-				cursor, err := re.Cursor(src)
-				if err != nil {
-					return manifest, nil, err
-				}
-				got = got[:0]
-				for s, ok := cursor.Next(); ok; s, ok = cursor.Next() {
-					got = append(got, s)
-				}
-				if !slices.Equal(got, want) {
-					return manifest, nil, mismatch("pretok-cursor", c.ID, spec.Size, i, src, got, want)
-				}
-				b.Requests = append(b.Requests, Request{Text: src, Expected: want})
+				b.Requests = append(b.Requests, Request{Text: src, Start: tc.Start, End: tc.End})
 				b.Bytes += len(src)
 				b.Scalars += utf8.RuneCountInString(src)
-				b.Spans += len(want)
 			}
-			total, ok := spec.Spans[patternID]
-			if !ok || previous != len(text) || b.Spans != total {
+			if previous != len(text) {
 				return manifest, nil, fmt.Errorf("batch totals mismatch")
 			}
 			batches = append(batches, b)
@@ -223,17 +194,4 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 		return manifest, nil, fmt.Errorf("empty benchmark corpus")
 	}
 	return manifest, batches, nil
-}
-func mismatch(engine, id string, size, index int, src string, got, want []pretok.Span) error {
-	at := 0
-	for at < len(got) && at < len(want) && got[at] == want[at] {
-		at++
-	}
-	start := 0
-	if at < len(want) {
-		start = want[at].Start
-	}
-	lo := max(0, start-30)
-	hi := min(len(src), start+90)
-	return fmt.Errorf("%s %s/%d request %d: first mismatch span %d, got %v expected %v, nearby bytes %q", engine, id, size, index, at, got[max(0, at-1):min(len(got), at+2)], want[max(0, at-1):min(len(want), at+2)], src[lo:hi])
 }

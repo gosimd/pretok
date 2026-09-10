@@ -14,38 +14,34 @@ import (
 	"github.com/gosimd/pretok/internal/compile"
 )
 
-func fixture(t *testing.T, spans [][2]int) (string, Manifest) {
-	return fixtureText(t, "a b", map[string][][2]int{"P05": spans})
-}
-func fixtureText(t *testing.T, text string, spans map[string][][2]int) (string, Manifest) {
+func fixture(t *testing.T, text string) (string, Manifest) {
 	t.Helper()
 	dir := t.TempDir()
-	write := func(name string, v []byte) string {
-		var b bytes.Buffer
-		w := gzip.NewWriter(&b)
-		if _, err := w.Write(v); err != nil {
-			t.Fatal(err)
-		}
-		if err := w.Close(); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(dir, name), b.Bytes(), 0644); err != nil {
-			t.Fatal(err)
-		}
-		return Digest(b.Bytes())
+	var compressed bytes.Buffer
+	w := gzip.NewWriter(&compressed)
+	if _, err := w.Write([]byte(text)); err != nil {
+		t.Fatal(err)
 	}
-	request, _ := json.Marshal([]any{map[string]any{"start": 0, "end": len(text), "spans": spans}})
-	totals := map[string]int{}
-	for id, s := range spans {
-		totals[id] = len(s)
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "text.gz"), compressed.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+	request, _ := json.Marshal([]any{map[string]any{"start": 0, "end": len(text)}})
+	if err := os.WriteFile(filepath.Join(dir, "requests.json"), request, 0644); err != nil {
+		t.Fatal(err)
 	}
 	profiles := map[string]PatternSpec{}
 	for id, p := range map[string]string{"P01": compile.QwenMarksPattern, "P05": compile.QwenPattern} {
 		profiles[id] = PatternSpec{Pattern: p, PatternSHA: Digest([]byte(p))}
 	}
-	manifest := Manifest{Schema: 2, Patterns: profiles, Corpora: []CorpusSpec{{ID: "test", Kind: "natural", File: "text.gz", SHA: Digest([]byte(text)), CompressedSHA: write("text.gz", []byte(text)), Bytes: len(text), Scalars: utf8.RuneCountInString(text), Batches: []BatchSpec{{Size: 256, File: "requests.gz", SHA: write("requests.gz", request), Requests: 1, Spans: totals}}}}}
-	saveManifest(t, dir, manifest)
-	return dir, manifest
+	m := Manifest{Schema: 3, Patterns: profiles, Corpora: []CorpusSpec{{ID: "test", Kind: "natural", File: "text.gz", SHA: Digest([]byte(text)), CompressedSHA: Digest(compressed.Bytes()), Bytes: len(text), Scalars: utf8.RuneCountInString(text), Batches: []BatchSpec{{Size: 256, File: "requests.json", SHA: Digest(request), Requests: 1}}}}}
+	saveManifest(t, dir, m)
+	return dir, m
+}
+func reference(b Batch, p string, matches, split [][2]int) Reference {
+	return Reference{Corpus: b.ID, Size: b.Size, PatternSHA: Digest([]byte(p)), InputSHA: b.InputSHA, Requests: []ReferenceRequest{{Start: 0, End: len(b.Requests[0].Text), Matches: matches, Split: split}}}
 }
 func saveManifest(t *testing.T, dir string, m Manifest) {
 	t.Helper()
@@ -58,51 +54,107 @@ func saveManifest(t *testing.T, dir string, m Manifest) {
 	}
 }
 func TestLoadAndGate(t *testing.T) {
-	dir, _ := fixture(t, [][2]int{{0, 1}, {1, 3}})
+	dir, _ := fixture(t, "a b")
 	_, batches, err := Load(dir, "P05")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(batches) != 1 || batches[0].Bytes != 3 || batches[0].Spans != 2 {
-		t.Fatal("wrong totals")
-	}
+	b := &batches[0]
 	re, _ := pretok.Compile(compile.QwenPattern)
+	if b.Verified || b.Spans != 0 {
+		t.Fatal("load constructed references")
+	}
+	if _, err := Operation(re, b, "pretok-reused"); err == nil {
+		t.Fatal("unverified input measured")
+	}
+	spans := [][2]int{{0, 1}, {1, 3}}
+	if err := Verify(re, Digest([]byte(compile.QwenPattern)), b, reference(*b, compile.QwenPattern, spans, spans)); err != nil {
+		t.Fatal(err)
+	}
+	if b.Bytes != 3 || b.Spans != 2 || b.Matches != 2 || b.Capacity != 2 {
+		t.Fatal("wrong verified totals")
+	}
 	for _, engine := range []string{"pretok-cursor", "pretok-reused", "pretok-fresh"} {
-		run, err := Operation(re, &batches[0], engine)
+		op, err := Operation(re, b, engine)
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := run()
-		if again := run(); again != got {
+		if op() != op() {
 			t.Fatal("operation not repeatable")
 		}
 	}
 }
-func TestRejectCorruptOrIncorrectReference(t *testing.T) {
-	// This partitions the input, but disagrees with the regex: counts are not enough.
-	dir, _ := fixture(t, [][2]int{{0, 2}, {2, 3}})
-	if _, _, err := Load(dir, "P05"); err == nil || !strings.Contains(err.Error(), "first mismatch") {
-		t.Fatalf("want mismatch, got %v", err)
-	}
-	dir, m := fixture(t, [][2]int{{0, 1}, {1, 3}})
+func TestRejectCorruptInputs(t *testing.T) {
+	dir, m := fixture(t, "a b")
 	m.Corpora[0].CompressedSHA = "wrong"
 	saveManifest(t, dir, m)
 	if _, _, err := Load(dir, "P05"); err == nil || !strings.Contains(err.Error(), "hash mismatch") {
-		t.Fatalf("want hash error, got %v", err)
+		t.Fatalf("want hash error: %v", err)
 	}
 	if _, _, err := Load(t.TempDir(), "P05"); err == nil {
-		t.Fatal("missing corpus silently accepted")
+		t.Fatal("missing inputs accepted")
 	}
-}
-func TestRejectTraversalAndDuplicateBatches(t *testing.T) {
 	if _, err := ReadGzip(t.TempDir(), "../outside.gz", ""); err == nil {
-		t.Fatal("accepted path traversal")
+		t.Fatal("path traversal accepted")
 	}
-	dir, m := fixture(t, [][2]int{{0, 1}, {1, 3}})
+	dir, m = fixture(t, "a b")
 	m.Corpora[0].Batches = append(m.Corpora[0].Batches, m.Corpora[0].Batches[0])
 	saveManifest(t, dir, m)
 	if _, _, err := Load(dir, "P05"); err == nil {
 		t.Fatal("duplicate batch accepted")
+	}
+}
+func TestVerifyRejectsWrongOrIncompleteOracle(t *testing.T) {
+	dir, _ := fixture(t, "a b")
+	m, batches, err := Load(dir, "P05")
+	if err != nil {
+		t.Fatal(err)
+	}
+	re, _ := pretok.Compile(m.Pattern)
+	for _, kind := range []string{"split", "matches", "pattern", "input", "range", "count", "corpus"} {
+		t.Run(kind, func(t *testing.T) {
+			b := batches[0]
+			spans := [][2]int{{0, 1}, {1, 3}}
+			ref := reference(b, m.Pattern, spans, spans)
+			switch kind {
+			case "split":
+				ref.Requests[0].Split = [][2]int{{0, 2}, {2, 3}}
+			case "matches":
+				ref.Requests[0].Matches = [][2]int{{0, 3}}
+			case "pattern":
+				ref.PatternSHA = "wrong"
+			case "input":
+				ref.InputSHA = "wrong"
+			case "range":
+				ref.Requests[0].End--
+			case "count":
+				ref.Requests = nil
+			case "corpus":
+				ref.Corpus = "other"
+			}
+			if err := Verify(re, m.PatternSHA, &b, ref); err == nil {
+				t.Fatal("incorrect oracle accepted")
+			}
+			if b.Verified {
+				t.Fatal("failed batch marked verified")
+			}
+			if _, err := Operation(re, &b, "pretok-reused"); err == nil {
+				t.Fatal("failed batch can be measured")
+			}
+		})
+	}
+}
+func TestReferenceSpanValidation(t *testing.T) {
+	for _, raw := range [][][2]int{{{0, 1}}, {{-1, 3}}, {{0, 4}}, {{1, 2}}, {{0, 3}, {2, 3}}, {{0, 0}}} {
+		if _, err := checkedSpans("界", raw, false); err == nil {
+			t.Fatalf("accepted %v", raw)
+		}
+	}
+	if _, err := checkedSpans("a b", [][2]int{{2, 3}}, false); err != nil {
+		t.Fatal("match gaps must be allowed", err)
+	}
+	if _, err := checkedSpans("a b", [][2]int{{2, 3}}, true); err == nil {
+		t.Fatal("split gaps must be rejected")
 	}
 }
 func TestReportWeightedAggregate(t *testing.T) {
@@ -134,36 +186,21 @@ func TestReportWeightedAggregate(t *testing.T) {
 }
 
 func TestSharedCorpusManifest(t *testing.T) {
-	dir, _ := fixtureText(t, "a\u0301b", map[string][][2]int{"P01": {{0, 4}}, "P05": {{0, 1}, {1, 4}}})
-	for id, n := range map[string]int{"P01": 1, "P05": 2} {
-		got, batches, err := Load(dir, id)
+	dir, _ := fixture(t, "a\u0301b")
+	for id, spans := range map[string][][2]int{"P01": {{0, 4}}, "P05": {{0, 1}, {1, 4}}} {
+		m, batches, err := Load(dir, id)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.Pattern != got.Patterns[id].Pattern || len(batches) != 1 || batches[0].Spans != n || batches[0].Requests[0].Text != "a\u0301b" {
-			t.Fatal("wrong reference selected")
+		re, _ := pretok.Compile(m.Pattern)
+		if err := Verify(re, m.PatternSHA, &batches[0], reference(batches[0], m.Pattern, spans, spans)); err != nil {
+			t.Fatal(err)
+		}
+		if batches[0].Spans != len(spans) {
+			t.Fatal("wrong profile verified")
 		}
 	}
 	if _, _, err := Load(dir, "P99"); err == nil {
-		t.Fatal("accepted unknown profile")
-	}
-}
-
-func TestMissingAndSwappedPatternReferences(t *testing.T) {
-	dir, _ := fixture(t, [][2]int{{0, 1}, {1, 3}})
-	if _, _, err := Load(dir, "P01"); err == nil || !strings.Contains(err.Error(), "missing P01 reference") {
-		t.Fatalf("want missing reference, got %v", err)
-	}
-	dir, _ = fixtureText(t, "a\u0301b", map[string][][2]int{"P01": {{0, 1}, {1, 4}}, "P05": {{0, 4}}})
-	for _, id := range []string{"P01", "P05"} {
-		if _, _, err := Load(dir, id); err == nil || !strings.Contains(err.Error(), "first mismatch") {
-			t.Fatalf("%s: swapped references accepted: %v", id, err)
-		}
-	}
-	dir, m := fixtureText(t, "a\u0301b", map[string][][2]int{"P01": {{0, 4}}})
-	delete(m.Corpora[0].Batches[0].Spans, "P01")
-	saveManifest(t, dir, m)
-	if _, _, err := Load(dir, "P01"); err == nil {
-		t.Fatal("missing per-pattern total accepted")
+		t.Fatal("unknown profile accepted")
 	}
 }

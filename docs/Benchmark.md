@@ -185,7 +185,8 @@ language headline average.
 Before timing each engine on a batch:
 
 - Validate input UTF-8, pattern identity, oracle profile, and manifest hashes.
-- Compare every ordered `(Start, End)` byte span against the pinned HF oracle for
+- Generate HF matches and isolated splits in memory for each batch, outside timing.
+- Compare every ordered `(Start, End)` byte span against that live oracle for
   that exact request. Counts and checksums alone do not prove equality.
 - Verify non-empty spans, valid scalar boundaries, gap policy, and reconstruction
   for isolated splitting. P01/P05's match-only and isolated outputs coincide because
@@ -196,7 +197,8 @@ Before timing each engine on a batch:
 On mismatch, print the engine, request ID, first differing span, and nearby escaped
 text, then stop. Do not publish a speedup for an incorrect result or modify the
 pattern to make the comparison compile. Correctness, hashes, and corpus statistics
-are computed outside the measured interval.
+are computed outside the measured interval. Corpus reference arrays are never
+persisted. Discard them after checking; retain only counts and buffer capacities.
 
 ## Timing boundaries and runners
 
@@ -291,7 +293,8 @@ remain smoke checks and do not replace this cross-engine report.
 Follow the [publication policy](../benchmark/results/README.md): retain only
 selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
-Reference spans and counts are keyed by pattern ID within those common files.
+Those files store only inputs. Each run generates reference spans for the chosen
+pattern in memory before checking all results and starting timers.
 Add any new scenarios to the common corpus. The runner selects P01 or P05 per
 invocation. Broader support requires
 implementing and validating each additional pattern.

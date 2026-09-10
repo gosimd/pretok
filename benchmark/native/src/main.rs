@@ -45,18 +45,19 @@ struct BatchSpec {
     file: String,
     sha256: String,
     requests: usize,
-    spans: BTreeMap<String, usize>,
 }
 #[derive(Deserialize)]
 struct Request {
     start: usize,
     end: usize,
-    spans: BTreeMap<String, Vec<(usize, usize)>>,
 }
 struct Batch {
     data: Arc<[u8]>,
     requests: Vec<(usize, usize)>,
-    expected: Vec<Vec<(usize, usize)>>,
+    input_sha256: String,
+    capacity: usize,
+    matches: usize,
+    verified: bool,
     bytes: usize,
     spans: usize,
 }
@@ -87,11 +88,15 @@ struct Sample {
 fn digest(data: &[u8]) -> String {
     format!("{:x}", Sha256::digest(data))
 }
-fn gunzip(path: &Path, expected: &str) -> Result<Vec<u8>> {
-    let compressed = fs::read(path)?;
-    if digest(&compressed) != expected {
+fn read_checked(path: &Path, expected: &str) -> Result<Vec<u8>> {
+    let data = fs::read(path)?;
+    if digest(&data) != expected {
         return Err(format!("hash mismatch: {}", path.display()).into());
     }
+    Ok(data)
+}
+fn gunzip(path: &Path, expected: &str) -> Result<Vec<u8>> {
+    let compressed = read_checked(path, expected)?;
     let mut data = Vec::new();
     GzDecoder::new(&compressed[..]).read_to_end(&mut data)?;
     Ok(data)
@@ -170,7 +175,7 @@ fn main() -> Result<()> {
     }
     let root = PathBuf::from(&args[1]);
     let manifest: Manifest = serde_json::from_slice(&fs::read(root.join("manifest.json"))?)?;
-    if manifest.schema != 2 {
+    if manifest.schema != 3 {
         return Err("unsupported corpus schema".into());
     }
     let selected = manifest
@@ -185,6 +190,11 @@ fn main() -> Result<()> {
         SplitPattern::Regex(selected.pattern.clone()),
         SplitDelimiterBehavior::Isolated,
         false,
+    )?;
+    let match_split = Split::new(
+        SplitPattern::Regex(selected.pattern.clone()),
+        SplitDelimiterBehavior::Removed,
+        true,
     )?;
     // The wheel oracle and the newly resolved native build must agree before any timing.
     let fixture_data = gunzip(Path::new(&args[2]), &selected.fixture_sha256)?;
@@ -229,54 +239,39 @@ fn main() -> Result<()> {
         let text = std::str::from_utf8(&data)?;
         for spec in corpus.batches {
             let cases: Vec<Request> =
-                serde_json::from_slice(&gunzip(&root.join(&spec.file), &spec.sha256)?)?;
+                serde_json::from_slice(&read_checked(&root.join(&spec.file), &spec.sha256)?)?;
             if cases.len() != spec.requests {
                 return Err("request count mismatch".into());
             }
             let mut requests = Vec::new();
-            let mut expected = Vec::new();
+
             let mut byte_count = 0;
-            let mut count = 0;
-            for (i, case) in cases.into_iter().enumerate() {
+            let mut previous = 0;
+            for case in cases {
                 let src = text
                     .get(case.start..case.end)
                     .ok_or("invalid request range")?;
-                let label = format!("{}/{}/{}", corpus.id, spec.size, i);
-                let spans = case
-                    .spans
-                    .get(&args[3])
-                    .ok_or("pattern reference missing from request")?;
-                equal("hf-split", &label, src, &hf_spans(&split, src)?, spans)?;
-                equal("onig-split", &label, src, &onig_spans(&re, src), spans)?;
-                equal(
-                    "onig-iter",
-                    &label,
-                    src,
-                    &re.find_iter(src).collect::<Vec<_>>(),
-                    spans,
-                )?;
-                equal("onig-at", &label, src, &at_spans(&re, src)?, spans)?;
+                if case.start != previous {
+                    return Err("non-contiguous request ranges".into());
+                }
+                previous = case.end;
                 byte_count += src.len();
-                count += spans.len();
                 requests.push((case.start, case.end));
-                expected.push(spans.clone());
             }
-            if count
-                != *spec
-                    .spans
-                    .get(&args[3])
-                    .ok_or("pattern span count missing")?
-            {
-                return Err("span count mismatch".into());
+            if previous != text.len() {
+                return Err("incomplete request coverage".into());
             }
             batches.insert(
                 (corpus.id.clone(), spec.size),
                 Batch {
                     data: Arc::clone(&data),
                     requests,
-                    expected,
+                    input_sha256: corpus.sha256.clone(),
+                    capacity: 0,
+                    matches: 0,
+                    verified: false,
                     bytes: byte_count,
-                    spans: count,
+                    spans: 0,
                 },
             );
         }
@@ -294,6 +289,25 @@ fn main() -> Result<()> {
         if command.op == "quit" {
             break;
         }
+        if command.op == "reference" {
+            let key = (command.corpus, command.size);
+            let batch = batches.get_mut(&key).ok_or("unknown corpus/size")?;
+            let result = reference(
+                batch,
+                &re,
+                &split,
+                &match_split,
+                &key.0,
+                key.1,
+                &selected.pattern_sha256,
+            );
+            match result {
+                Ok(value) => writeln!(output, "{}", serde_json::to_string(&value)?)?,
+                Err(err) => writeln!(output, "{}", serde_json::json!({"error":err.to_string()}))?,
+            }
+            output.flush()?;
+            continue;
+        }
         let result = if command.op == "compile" {
             compile_sample(&selected.pattern, &command.engine, command.min_ms)
         } else {
@@ -310,6 +324,73 @@ fn main() -> Result<()> {
     }
     Ok(())
 }
+#[derive(Serialize)]
+struct ReferenceRequest {
+    start: usize,
+    end: usize,
+    matches: Vec<(usize, usize)>,
+    split: Vec<(usize, usize)>,
+}
+#[derive(Serialize)]
+struct Reference {
+    corpus: String,
+    size: usize,
+    pattern_sha256: String,
+    input_sha256: String,
+    requests: Vec<ReferenceRequest>,
+}
+fn reference(
+    batch: &mut Batch,
+    re: &Regex,
+    split: &Split,
+    match_split: &Split,
+    corpus: &str,
+    size: usize,
+    pattern_sha: &str,
+) -> Result<Reference> {
+    batch.verified = false;
+    let mut requests = Vec::new();
+    let mut total = 0;
+    let mut match_count = 0;
+    let mut capacity = 0;
+    for (i, &(start, end)) in batch.requests.iter().enumerate() {
+        let src = std::str::from_utf8(&batch.data[start..end])?;
+        let matches = hf_spans(match_split, src)?;
+        let spans = hf_spans(split, src)?;
+        let label = format!("{corpus}/{size}/{i}");
+        equal("onig-split", &label, src, &onig_spans(re, src), &spans)?;
+        equal(
+            "onig-iter",
+            &label,
+            src,
+            &re.find_iter(src).collect::<Vec<_>>(),
+            &matches,
+        )?;
+        // Match-at is currently a diagnostic for the fully covering P01/P05 plans.
+        equal("onig-at", &label, src, &at_spans(re, src)?, &matches)?;
+        total += spans.len();
+        match_count += matches.len();
+        capacity = capacity.max(spans.len());
+        requests.push(ReferenceRequest {
+            start,
+            end,
+            matches,
+            split: spans,
+        });
+    }
+    batch.spans = total;
+    batch.matches = match_count;
+    batch.capacity = capacity;
+    batch.verified = true;
+    Ok(Reference {
+        corpus: corpus.to_owned(),
+        size,
+        pattern_sha256: pattern_sha.to_owned(),
+        input_sha256: batch.input_sha256.clone(),
+        requests,
+    })
+}
+
 fn consume(acc: u64, a: usize, b: usize) -> u64 {
     acc.wrapping_add(a as u64).rotate_left(7) ^ (b as u64)
 }
@@ -381,8 +462,10 @@ fn sample(batch: &Batch, re: &Regex, split: &Split, engine: &str, min_ms: u64) -
     if min_ms == 0 {
         return Err("min_ms must be positive".into());
     }
-    let capacity = batch.expected.iter().map(Vec::len).max().unwrap_or(0);
-    let mut scratch = Vec::with_capacity(capacity);
+    if !batch.verified {
+        return Err("reference generation must precede measurement".into());
+    }
+    let mut scratch = Vec::with_capacity(batch.capacity);
     black_box(run(batch, re, split, engine, &mut scratch)?);
     let start = Instant::now();
     let mut iterations = 0;
@@ -400,7 +483,11 @@ fn sample(batch: &Batch, re: &Regex, split: &Split, engine: &str, min_ms: u64) -
         checksum,
         bytes: batch.bytes,
         requests: batch.requests.len(),
-        spans: batch.spans,
+        spans: if engine == "onig-iter" || engine == "onig-at" {
+            batch.matches
+        } else {
+            batch.spans
+        },
     })
 }
 fn compile_sample(pattern: &str, engine: &str, min_ms: u64) -> Result<Sample> {

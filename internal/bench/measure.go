@@ -38,11 +38,10 @@ func Operation(re *pretok.Regexp, b *Batch, engine string) (func() uint64, error
 	if engine != "pretok-cursor" && engine != "pretok-reused" && engine != "pretok-fresh" {
 		return nil, fmt.Errorf("unknown Go engine %q", engine)
 	}
-	capacity := 0
-	for _, r := range b.Requests {
-		capacity = max(capacity, len(r.Expected))
+	if !b.Verified {
+		return nil, fmt.Errorf("batch must pass live reference verification before measurement")
 	}
-	dst := make([]pretok.Span, 0, capacity)
+	dst := make([]pretok.Span, 0, b.Capacity)
 	return func() uint64 {
 		var sum uint64
 		for _, r := range b.Requests {

@@ -59,8 +59,8 @@ Use `-cpu-label` with a verified host description if sandbox restrictions block
 automatic CPU discovery.
 
 A smoke run is a functionality check, not stable performance evidence. `-filter`
-limits measured corpora, but all original fixtures and corpus request spans are
-still checked by the native reference. Results are in `REPORT.md`, `samples.jsonl`,
+limits measured corpora, but live HF references are generated and compared for
+every corpus request before measurement. Results are in `REPORT.md`, `samples.jsonl`,
 and `environment.json`; a failed run never sets `complete: true`.
 
 The native runner uses a persistent JSON-line protocol. There is no per-match FFI,
@@ -71,7 +71,29 @@ figures are unavailable. UTF-8 validation is timed on both public input paths.
 `onig-at` is an additional full-subject match-at-offset diagnostic with validation;
 it has no dedicated internal-Go core comparison yet.
 
-## Rebuild corpus and oracle data
+## Reference generation and correctness
+
+Every normal run and `-verify-only` executes the same pipeline:
+
+1. Load pinned input bytes and request ranges.
+2. Check the native reference build against the existing regression fixtures.
+3. Generate HF matches and isolated split spans in memory for each batch.
+4. Compare every Oniguruma and Go boundary; fail before timing on any mismatch.
+5. Discard reference arrays, retaining only counts and reusable-buffer capacity.
+6. Run measurements (omitted with `-verify-only`).
+
+No corpus reference arrays are stored, loaded, or decompressed. Native reference
+construction, JSON transport, comparison, and reference disposal are outside the
+scan timer. Both runners refuse to measure batches that have not passed their
+reference gate. `matches` and `split` are separate oracle outputs and counters.
+The current match-at diagnostic remains limited to fully covering P01/P05.
+
+Small regression fixtures under `testdata/` remain independent of the mass-corpus
+pipeline: they support offline Go tests and guard the pinned Unicode/reference
+profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
+recorded in each run.
+
+## Rebuild corpus inputs
 
 Only this explicit preparation step uses Python and the network. Use Python
 3.9–3.12 with binary wheels. Dataset revisions and source shard paths are pinned
@@ -83,26 +105,25 @@ python3 -m venv /private/tmp/pretok-benchmark-python
 /private/tmp/pretok-benchmark-python/bin/python benchmark/prepare/corpus.py
 ```
 
-To regenerate expected spans from already prepared pools without network access:
+To rebuild request ranges and manifests from existing pools without network access:
 
 ```sh
 /private/tmp/pretok-benchmark-python/bin/python benchmark/prepare/corpus.py --offline
 ```
 
-Preparation records exact Python-wheel binary and output hashes. The native build
-then has to pass the selected pattern's wheel-oracle fixtures (26,820 for P01; 7,738 for P05) and every generated
-request before timing; matching a package version alone is insufficient. Unicode
-range changes require deliberate reference review, not automatic fixture updates.
+Preparation records source, input, and generator hashes. It does not execute a
+regex engine or generate expected output. The native build still has to pass the
+selected pattern's regression fixtures (26,820 for P01; 7,738 for P05), so a crate
+version alone is insufficient to establish Unicode compatibility.
 
-Source text and reference spans are deterministic gzip files. Natural corpora are
+Source text uses deterministic gzip files; request ranges use plain JSON. Natural corpora are
 approximately equal in UTF-8 bytes, not characters. Every 256 B, 4 KiB, 64 KiB, or
 whole-pool request is a separate regex subject. Synthetic requests use predefined
 run lengths around vector boundaries and are excluded from combined natural-text
 ratios. All maintained inputs and tools live outside ignored `research/`.
 
-Corpus preparation regenerates all supported patterns together in `corpus/`.
-There is one manifest and one request file per corpus/size. Each request stores its
-input range once and reference spans keyed by pattern ID. The runner's `-pattern`
-selects the expected spans and regex; it does not select different inputs or files.
-Add any new diagnostic scenarios to this shared corpus so all patterns receive
-the same workloads. See the [corpus format](corpus/README.md).
+Corpus preparation writes a single common manifest and input-range file per
+corpus/size. The runner's `-pattern` selects the regex used to generate live
+references; it does not select different input files. Add diagnostic scenarios to
+this shared corpus so every pattern receives the same workloads. See the
+[corpus format](corpus/README.md).

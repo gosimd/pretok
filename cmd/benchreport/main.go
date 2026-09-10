@@ -60,29 +60,37 @@ func (n *native) close() {
 	}
 	n.cmd.Wait()
 }
-func (n *native) sample(command any) (bench.Sample, error) {
-	var s bench.Sample
+func (n *native) call(command, result any) error {
 	if err := json.NewEncoder(n.in).Encode(command); err != nil {
-		return s, err
+		return err
 	}
 	line, err := n.out.ReadBytes('\n')
 	if err != nil {
-		return s, fmt.Errorf("native runner ended: %w", err)
+		return fmt.Errorf("native runner ended: %w", err)
 	}
 	var response struct {
 		Error string `json:"error"`
 	}
 	if err = json.Unmarshal(line, &response); err != nil {
-		return s, err
+		return err
 	}
 	if response.Error != "" {
-		return s, fmt.Errorf("native: %s", response.Error)
+		return fmt.Errorf("native: %s", response.Error)
 	}
-	err = json.Unmarshal(line, &s)
+	return json.Unmarshal(line, result)
+}
+func (n *native) sample(command any) (bench.Sample, error) {
+	var s bench.Sample
+	err := n.call(command, &s)
 	if err == nil && (s.Iterations == 0 || s.ElapsedNS == 0) {
 		err = fmt.Errorf("invalid native timing response")
 	}
 	return s, err
+}
+func (n *native) reference(b *bench.Batch) (bench.Reference, error) {
+	var ref bench.Reference
+	err := n.call(map[string]any{"op": "reference", "corpus": b.ID, "size": b.Size}, &ref)
+	return ref, err
 }
 func command(name string, args ...string) string {
 	out, err := exec.Command(name, args...).CombinedOutput()
@@ -182,13 +190,34 @@ func run() error {
 		return fmt.Errorf("unsupported benchmark pattern %q", *patternID)
 	}
 	runtime.GOMAXPROCS(1)
-	fmt.Fprintln(os.Stderr, "Verifying Go spans against pinned corpus requests...")
+	fmt.Fprintln(os.Stderr, "Loading pinned corpus inputs...")
 	manifest, batches, err := bench.Load(corpusPath, *patternID)
 	if err != nil {
 		return err
 	}
 	if manifest.Pattern != expectedPattern {
 		return fmt.Errorf("manifest pattern differs from selected %s", *patternID)
+	}
+	fmt.Fprintln(os.Stderr, "Checking the pinned native reference against regression fixtures...")
+	ref, ready, err := startNative(refPath, corpusPath, resolve(fixture), *patternID)
+	if err != nil {
+		return err
+	}
+	defer ref.close()
+	re, err := pretok.Compile(manifest.Pattern)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(os.Stderr, "Generating HF references in memory and verifying Go/Oniguruma on every corpus request...")
+	for i := range batches {
+		b := &batches[i]
+		expected, e := ref.reference(b)
+		if e != nil {
+			return e
+		}
+		if e = bench.Verify(re, manifest.PatternSHA, b, expected); e != nil {
+			return e
+		}
 	}
 	var selected []bench.Batch
 	for _, b := range batches {
@@ -199,12 +228,6 @@ func run() error {
 	if len(selected) == 0 {
 		return fmt.Errorf("filter selected no workloads")
 	}
-	fmt.Fprintln(os.Stderr, "Verifying native Oniguruma/HF against original fixtures and every corpus request...")
-	ref, ready, err := startNative(refPath, corpusPath, resolve(fixture), *patternID)
-	if err != nil {
-		return err
-	}
-	defer ref.close()
 	fmt.Fprintf(os.Stderr, "Correctness gate passed: %v original fixtures, %d batches.\n", ready["fixtures"], len(batches))
 	if err = os.MkdirAll(outPath, 0755); err != nil {
 		return err
@@ -212,6 +235,7 @@ func run() error {
 	executable, _ := os.Executable()
 	gitDiff := command("git", "-C", absolute, "diff", "--binary", "HEAD")
 	env := map[string]any{"started_utc": time.Now().UTC().Format(time.RFC3339), "complete": false, "go": runtime.Version(), "rust": command("rustc", "-Vv"), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpu": command("sysctl", "-n", "machdep.cpu.brand_string"), "os_version": command("uname", "-srv"), "workers": 1, "go_allocator": "Go runtime, default GC", "native_allocator": "Rust System + Oniguruma C allocator; counters unavailable", "go_build": command("go", "version", "-m", executable), "native_build": "cargo build --release --locked; thin LTO; 1 codegen unit; default CPU target", "git_commit": command("git", "-C", absolute, "rev-parse", "HEAD"), "git_status": command("git", "-C", absolute, "status", "--short"), "git_diff_sha256": bench.Digest([]byte(gitDiff)), "source_sha256": sourceSHA(absolute), "native_binary_sha256": fileSHA(refPath), "go_binary_sha256": fileSHA(executable), "cargo_lock_sha256": fileSHA(resolve("benchmark/native/Cargo.lock")), "corpus_manifest_sha256": fileSHA(filepath.Join(corpusPath, "manifest.json")), "pattern_sha256": manifest.PatternSHA, "native_gate": ready, "samples": *samples, "min_time_ns": int64(*minTime), "filter": *filter, "selected_batches": len(selected), "pattern_id": *patternID, "backend": "scalar", "utf8": "timed public validation on both sides", "rustflags": os.Getenv("RUSTFLAGS"), "goflags": os.Getenv("GOFLAGS")}
+	env["corpus_reference"] = "HF Split generated in memory before timing; exact Go/Oniguruma verification; no stored corpus spans"
 	env["input_layout"] = "contiguous corpus storage with request views in both runners"
 	if *cpuLabel != "" {
 		env["cpu"] = *cpuLabel
@@ -243,10 +267,6 @@ func run() error {
 			return err
 		}
 		return raw.Sync()
-	}
-	re, err := pretok.Compile(manifest.Pattern)
-	if err != nil {
-		return err
 	}
 	engines := bench.Engines()
 	for index := range selected {
@@ -283,7 +303,7 @@ func run() error {
 					if err != nil {
 						return err
 					}
-					if s.Bytes != b.Bytes || s.Requests != len(b.Requests) || s.Spans != b.Spans {
+					if s.Bytes != b.Bytes || s.Requests != len(b.Requests) || s.Spans != b.OutputCount(engine) {
 						return fmt.Errorf("native workload metadata mismatch")
 					}
 				}
@@ -295,7 +315,7 @@ func run() error {
 				s.Bytes = b.Bytes
 				s.Requests = len(b.Requests)
 				s.Scalars = b.Scalars
-				s.Spans = b.Spans
+				s.Spans = b.OutputCount(engine)
 				if err = record(s); err != nil {
 					return err
 				}
