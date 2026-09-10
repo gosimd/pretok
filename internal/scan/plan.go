@@ -3,16 +3,24 @@
 package scan
 
 // Plan selects immutable matching code. It owns no per-input execution state.
-// Match returns the endpoint of a match at pos, or pos if no branch matches.
+// Most plans match at a position; a search plan can skip failed runs wholesale.
 type Plan struct {
 	match func(src string, pos int) int
+	find  func(src string, pos int) (int, int)
 }
 
 func (p *Plan) Match(src string, pos int) int { return p.match(src, pos) }
+func (p *Plan) HasSearch() bool               { return p.find != nil }
 
-// ASCIITriples builds P02. Cursor owns searching past unmatched scalars;
+// Find returns the next match or len(src), len(src). Requires HasSearch().
+func (p *Plan) Find(src string, pos int) (int, int) { return p.find(src, pos) }
+
+// ASCIITriples builds P02 using the cursor's shared search past unmatched scalars;
 // Split owns preserving maximal gaps, including short digit-run residues.
 func ASCIITriples() Plan { return Plan{match: asciiTriplet{}.match} }
+
+// LineEndWhitespace builds P03 with the pinned reference's line-end anchor.
+func LineEndWhitespace() Plan { return Plan{find: lineEndWhitespace{}.find} }
 
 // Qwen builds the P05 plan. The template fixes alternative order; components
 // implement only the constructions used by this exact expression.

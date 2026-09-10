@@ -74,21 +74,32 @@ func (r *Regexp) Cursor(src string) (Cursor, error) {
 // Next returns the next match and true, or a zero Span and false after exhaustion.
 // Repeated calls on an exhausted cursor keep returning false.
 func (c *Cursor) Next() (Span, bool) {
-	for c.pos < len(c.src) {
-		start := c.pos
-		end := c.plan.Match(c.src, start)
+	if c.pos < len(c.src) && c.plan.HasSearch() {
+		start, end := c.plan.Find(c.src, c.pos)
 		if end > start {
-			c.pos = end
-			if end == len(c.src) {
-				c.src = ""
-			}
-			return Span{Start: start, End: end}, true
+			return c.matched(start, end)
 		}
-		_, size := utf8.DecodeRuneInString(c.src[start:])
-		c.pos += size
+	} else {
+		for c.pos < len(c.src) {
+			start := c.pos
+			end := c.plan.Match(c.src, start)
+			if end > start {
+				return c.matched(start, end)
+			}
+			_, size := utf8.DecodeRuneInString(c.src[start:])
+			c.pos += size
+		}
 	}
 	c.src = ""
 	return Span{}, false
+}
+
+func (c *Cursor) matched(start, end int) (Span, bool) {
+	c.pos = end
+	if end == len(c.src) {
+		c.src = ""
+	}
+	return Span{Start: start, End: end}, true
 }
 
 // Split appends pre-token spans for src to dst. Pass dst[:0] to reuse storage.

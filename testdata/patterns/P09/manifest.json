@@ -1,0 +1,29 @@
+{
+  "pattern_id": "P09",
+  "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "40551c780172dcc1a978109077235787a3a9a4987deae1fd1ef7a075ee17c813",
+  "source": {
+    "model_id": "stabilityai/stablelm-2-1_6b",
+    "revision": "f499ead74c53749bd93cebc6ce8bc0d7bdf1eaef",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/stabilityai/stablelm-2-1_6b/blob/f499ead74c53749bd93cebc6ce8bc0d7bdf1eaef/tokenizer.json",
+    "sha256": "4ce5f0768574d7224669ee2192ce9b45394b64df3d6e7ea7e36f8ee2d3a9d6d8",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Removed",
+      "invert": true
+    }
+  },
+  "oracle_version": "0.22.2",
+  "scanner_plan": "P05",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Exact alias of the P05 scanner, independently verified against live HF matches/splits on the common corpus. No stored output arrays."
+}

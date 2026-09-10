@@ -5,9 +5,10 @@
 Build `github.com/gosimd/pretok` as a compiler for common pre-tokenization regex
 patterns into specialized scanners. Follow the design and status in `README.md`.
 The root API supports P01/P05 through a shared scalar template, P02 through
-an ASCII-triplet plan, and P04 through an ordered case-word plan. Plans share
-cursor/gap handling and common constructions. The other 21 strings and
-SIMD remain unsupported. Keep compatibility claims scoped to these patterns
+an ASCII-triplet plan, P03 through a line-end whitespace search, and P04 through
+an ordered case-word plan. Plans share cursor/gap handling and common
+constructions. P09/P13 are independently validated exact aliases of the P05 plan.
+The other 18 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
 Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary

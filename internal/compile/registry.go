@@ -11,6 +11,12 @@ const QwenPattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}
 // QwenMarksPattern is the separately validated corpus P01 string.
 const QwenMarksPattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
 
+// QwenLiteralNewlinesPattern (P09) contains literal CR/LF after JSON decoding.
+const QwenLiteralNewlinesPattern = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
+
+// QwenPossessivePattern (P13) shares P05 boundaries under the pinned profile.
+const QwenPossessivePattern = `'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+`
+
 var qwen = scan.Qwen()
 var qwenMarks = scan.QwenMarks()
 
@@ -24,14 +30,22 @@ const CaseWordsPattern = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{
 
 var caseWords = scan.CaseWords()
 
+// LineEndWhitespacePattern is corpus P03. Its anchor follows the pinned HF profile.
+const LineEndWhitespacePattern = `\s+$`
+
+var lineEndWhitespace = scan.LineEndWhitespace()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == LineEndWhitespacePattern {
+		return &lineEndWhitespace, true
+	}
 	if pattern == CaseWordsPattern {
 		return &caseWords, true
 	}
 	if pattern == ASCIITriplesPattern {
 		return &asciiTriples, true
 	}
-	if pattern == QwenPattern {
+	if pattern == QwenPattern || pattern == QwenLiteralNewlinesPattern || pattern == QwenPossessivePattern {
 		return &qwen, true
 	}
 	if pattern == QwenMarksPattern {

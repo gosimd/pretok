@@ -118,22 +118,52 @@ type whitespaceObservation struct {
 	end           int
 	lastRuneStart int
 	lastCRLFEnd   int
+	lastLFStart   int
 }
 
 func (whitespaceRun) observe(src string, pos int) whitespaceObservation {
-	run := whitespaceObservation{end: pos, lastRuneStart: -1, lastCRLFEnd: -1}
+	run := whitespaceObservation{end: pos, lastRuneStart: -1, lastCRLFEnd: -1, lastLFStart: -1}
 	for run.end < len(src) {
 		r, size := runeAt(src, run.end)
 		if !space(r) {
 			break
 		}
 		run.lastRuneStart = run.end
+		if r == '\n' {
+			run.lastLFStart = run.end
+		}
 		run.end += size
 		if r == '\r' || r == '\n' {
 			run.lastCRLFEnd = run.end
 		}
 	}
 	return run
+}
+
+// lineEndWhitespace implements P03's \s+$ under the pinned HF/Oniguruma
+// profile: $ asserts EOF or the position before any LF, without consuming LF.
+// A greedy whitespace run at EOF is consumed whole. Otherwise the last LF
+// supplies the rightmost possible endpoint, provided \s+ consumed something.
+type lineEndWhitespace struct{}
+
+func (lineEndWhitespace) find(src string, pos int) (int, int) {
+	for pos < len(src) {
+		r, width := runeAt(src, pos)
+		if !space(r) {
+			pos += width
+			continue
+		}
+		run := (whitespaceRun{}).observe(src, pos)
+		if run.end == len(src) {
+			return pos, run.end
+		}
+		if run.lastLFStart > pos {
+			return pos, run.lastLFStart
+		}
+		// No suffix starting inside this run can satisfy the anchor either.
+		pos = run.end
+	}
+	return len(src), len(src)
 }
 
 func (w whitespaceRun) match(src string, pos int) int {

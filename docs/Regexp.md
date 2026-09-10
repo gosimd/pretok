@@ -4,9 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01, P02, P04, and P05.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P05, P09, and P13.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
-an ASCII-triplet plan, and P04 uses ordered case-word candidates. The other 21
+an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
+ordered case-word candidates. P09/P13 reuse the P05 plan. The other 18
 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
@@ -21,6 +22,27 @@ P05:
 This exact string occurs in Qwen/Qwen2.5-0.5B, among other corpus models. See the
 [fixture manifest](../testdata/qwen/manifest.json) for the model revision, original
 file hash, JSON pointer, split settings, and oracle binary hash.
+
+P09 and P13 are separately registered exact aliases of P05, with their own
+[source profiles](../testdata/patterns/README.md) and live HF correctness gates.
+P09 contains actual CR/LF characters in its decoded string where P05 uses regex
+escapes. It must be passed unchanged after JSON decoding; no normalization occurs.
+Its source uses Removed/invert=true, while the benchmark also verifies isolated
+splits. Both outputs coincide for this fully covering expression.
+
+P13 is:
+
+```regex
+'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+
+```
+
+For this exact shape the possessive prefix is disjoint from the word body, and
+the possessive symbol body is disjoint from its CR/LF suffix. Giving characters
+back cannot enable a match. The greedy `\s*[\r\n]` selects the same endpoint as
+P05's `\s*[\r\n]+`: after the last CR/LF in the whitespace run. The factored
+contractions retain the same pinned case folding and selected boundaries.
+These facts justify sharing one immutable plan, without a general rule for
+removing possessive quantifiers or registering other equivalent spellings.
 
 P01:
 
@@ -81,6 +103,37 @@ The equivalent spelling `[0-9]{3}` is deliberately unregistered.
 in tiiuae/falcon-7b. Live HF references use Removed/invert=true for matches and
 Isolated/invert=false for splits; no new output archive is stored.
 
+P03:
+
+```regex
+\s+$
+```
+
+The pinned HF/Oniguruma profile treats `$` as a line-end assertion: it matches
+before **any LF**, as well as at EOF. CR, NEL, U+2028 and U+2029 do not themselves
+satisfy the anchor. Whitespace classification reuses the existing pinned tables.
+
+`\s+` is greedy: a whitespace run reaching EOF is consumed whole, including LF.
+Otherwise the match ends just before the last LF in that run, provided at least
+one whitespace scalar precedes that LF. Examples:
+
+| Input | Matches | Isolated pieces |
+|---|---|---|
+| `"a \nX"` | `" "` | `"a"`, `" "`, `"\nX"` |
+| `"a\nX"` | none | `"a\nX"` |
+| `"a \n\nX"` | `" \n"` | `"a"`, `" \n"`, `"\nX"` |
+| `"a \n"` | `" \n"` | `"a"`, `" \n"` |
+| `"a\r\nX"` | `"\r"` | `"a"`, `"\r"`, `"\nX"` |
+
+The internal plan searches by whole whitespace runs. Shared run metadata records
+the last LF position; failed runs are skipped entirely, keeping search linear.
+The cursor delegates search to its immutable plan, retaining only its own position.
+Each caller-supplied fragment defines a separate subject and its own EOF.
+
+[P03 source metadata](../testdata/patterns/P03/manifest.json) pins its DeepSeek
+occurrence and reference settings. `Cursor` skips gaps; `Split` preserves maximal
+gaps. No matches are empty. `\s+\z` and `(?m:\s+$)` remain unregistered strings.
+
 P04:
 
 ```regex
@@ -135,7 +188,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01, P02, P04, and P05 are implemented; the remaining strings are future
+unique strings. P01–P05, P09, and P13 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

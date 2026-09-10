@@ -15,6 +15,13 @@
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": false
     },
+    "P03": {
+      "pattern": "\\s+$",
+      "pattern_sha256": "16f72e393af534b9e1af2f1521e289e7426a51f3a48f9ec1c1e8f8ddef318006",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
     "P04": {
       "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
       "pattern_sha256": "1d64a9a8eaf9f1bd80331984d81fdd514e7feafe8df83a525dd31472f275699a",
@@ -28,9 +35,23 @@
       "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": true
+    },
+    "P09": {
+      "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+",
+      "pattern_sha256": "40551c780172dcc1a978109077235787a3a9a4987deae1fd1ef7a075ee17c813",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": true
+    },
+    "P13": {
+      "pattern": "'(?i:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
+      "pattern_sha256": "8327a0649c7e541ee7f9d225d5700b3ef99cbac940f792e7eb5630b63fa4b3fb",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": true
     }
   },
-  "generator_sha256": "50139f85a0e412899cc80c1b259a7a4b0714e90e29b56bc5aec8ca83b8b826d1",
+  "generator_sha256": "e1a7c87ec8af20c98a1249a04e5ab5626d80d642d339f9faee2178c6619a8ae3",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -228,18 +249,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "c9e67b113fc4fad2a922ccc47febcc10c56eacb06ac27aebc7543de1f089a050",
-      "compressed_sha256": "4a0ec3b5ea4ffd4c43bdbe828f9ba17dce80e69548e5172f1f1f911219b6e4fd",
-      "bytes": 946670,
-      "scalars": 548451,
-      "ascii_fraction": 0.3074218048527998,
+      "sha256": "a8308f10585db0eff70d9383a50f7d91d75ba7498c7ce92cc5e37b9f95db6d2f",
+      "compressed_sha256": "24901e9c42f0db8f97150969b52e39af9091fa573a5728697e810bbb03ac0590",
+      "bytes": 1050469,
+      "scalars": 617864,
+      "ascii_fraction": 0.3267559537692212,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "d090c9de2f6a919651222de0f91a852e6e66699bd3fc830dc7dc956c3e75e192",
-          "requests": 35026
+          "sha256": "faca09bc844eae83889b2f22784e7bd0a44676855269a9a3c2437699c925ed9c",
+          "requests": 43527
         }
       ]
     }

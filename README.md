@@ -6,13 +6,14 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for four exact regex strings: P05 (Qwen
+**Status:** scalar implementation for seven exact regex strings: P05 (Qwen
 letter-only words), P01 (letters and marks), P02 (exactly three ASCII digits),
-and P04 (ordered words with case-sensitive Unicode classes).
+P03 (whitespace ending at a line boundary or EOF), and P04 (ordered words with case-sensitive Unicode classes), plus P09/P13 as
+exact aliases of P05.
 P01/P05 share one parameterized scanner template; P02 reuses the public cursor
 and gap handling. P04 shares the number/symbol/whitespace tail and uses
 a dedicated word scanner with pinned Unicode classes. `Compile`, `Cursor`, and
-`Split` are checked against pinned Hugging Face references. The other 21 corpus
+`Split` are checked against pinned Hugging Face references. The other 18 corpus
 strings remain unsupported. No SIMD backend is implemented.
 
 ## Scope
@@ -159,7 +160,10 @@ support. The initial P05 implementation has
 its own [oracle fixtures](testdata/qwen/manifest.json); P01 has [separate fixtures](testdata/patterns/P01/manifest.json) and a [maintained regeneration script](testdata/patterns/README.md). P02 has [source metadata](testdata/patterns/P02/manifest.json); its references
 are generated in memory by the common benchmark pipeline. P04 has
 [its own pinned source and class-table profile](testdata/patterns/P04/manifest.json)
-and also uses live references. Full tokenizer
+and also uses live references. [P03](testdata/patterns/P03/manifest.json) uses
+the same live-reference pipeline with the pinned HF line-anchor semantics.
+[P09](testdata/patterns/P09/manifest.json) and [P13](testdata/patterns/P13/manifest.json)
+share the P05 plan and undergo independent live reference checks. Full tokenizer
 compatibility is outside this package.
 
 The [structural and semantic analysis](research/regex_analysis/ANALYSIS.md) groups
@@ -185,8 +189,10 @@ packages are deferred until broader recognition is needed.
 [Benchmark methodology](docs/Benchmark.md) defines the implemented Oniguruma and
 native HF comparisons, multilingual corpus, timing boundaries, and report metrics.
 See [benchmark/README.md](benchmark/README.md) to build and run the offline suite.
-The [P01 Apple M5 scalar report](benchmark/results/P01/2026-09-10-apple-m5-scalar/REPORT.md)
-and [original P05 report](benchmark/results/P05/2026-09-09-apple-m5-scalar/REPORT.md)
+The [P01 Apple M5 scalar report](benchmark/results/P01/2026-09-10-apple-m5-scalar/REPORT.md),
+[original P05 report](benchmark/results/P05/2026-09-09-apple-m5-scalar/REPORT.md),
+[P09 report](benchmark/results/P09/2026-09-10-apple-m5-scalar/REPORT.md), and
+[P13 report](benchmark/results/P13/2026-09-10-apple-m5-scalar/REPORT.md)
 include all languages and sizes, raw samples, and environment fingerprints.
 
 The [Regexp contract](docs/Regexp.md) lists the exact supported strings and plan
@@ -199,6 +205,9 @@ go test -race ./...
 go test -run '^$' -fuzz FuzzQwenPartition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP01Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP02Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP03Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP09Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP13Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP04Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzCaseWordCandidates -fuzztime 10s ./internal/scan
 ```
@@ -206,7 +215,8 @@ go test -run '^$' -fuzz FuzzCaseWordCandidates -fuzztime 10s ./internal/scan
 The checked-in fixtures contain 7,738 P05 cases and 26,820 P01 cases. P02 uses
 small inline regressions, offline differential fuzzing against Go regexp, and
 live HF comparison on every common benchmark request; it adds no stored output
-archives. P04 adds inline HF cases, branch-candidate differential fuzzing, and
+archives. P03 uses the same approach with an explicit pinned whitespace class
+and multiline anchor for offline differential tests. P04 adds inline HF cases, branch-candidate differential fuzzing, and
 live HF matches/splits on the common corpus. Unicode class membership and the
 contraction case folds are generated from every Unicode scalar using the pinned
 native oracle, rather than Go's evolving Unicode tables. These checks establish

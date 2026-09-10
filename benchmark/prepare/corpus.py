@@ -111,16 +111,16 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P04','testdata/patterns/P04'),('P05','testdata/qwen')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
-        # P02/P04 have no stored outputs: retain the existing P05 native-build guard.
-        guard_dir=ROOT/'testdata/qwen' if ident in ('P02','P04') else fixture_dir
+        # New patterns and aliases have no stored outputs: retain the existing P05 native-build guard.
+        guard_dir=ROOT/'testdata/qwen' if ident not in ('P01','P05') else fixture_dir
         guard=json.loads((guard_dir/'manifest.json').read_text())
         patterns[ident]['fixture_pattern']=guard['pattern']
         patterns[ident]['fixture_sha256']=sha((guard_dir/'cases.jsonl.gz').read_bytes())
-        patterns[ident]['full_coverage']=ident in ('P01','P04','P05')
+        patterns[ident]['full_coverage']=ident in ('P01','P04','P05','P09','P13')
     manifest={'schema':3,'patterns':patterns,
               'generator_sha256':sha(Path(__file__).read_bytes()),
               'case_tables_sha256':sha((ROOT/'internal/scan/case_tables.go').read_bytes()),
@@ -165,6 +165,18 @@ def main():
         for ch in ['A','a','ǅ','中','ʰ','\u0301']:
             case_inputs.update([ch*n+'ABC','\u0301'+ch*n+'ABC','ABC'+ch*n+'DEF',ch*n+'a'])
     for text in sorted(case_inputs):
+        start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
+    # Line-end assertions and greedy whitespace, shared across all patterns.
+    whitespace_inputs=set()
+    for n in range(1,5):
+        for chars in itertools.product([' ','\t','\r','\n','\u2003','\u2028','X'],repeat=n):
+            text=''.join(chars)
+            whitespace_inputs.update([text,'a'+text+'Z','a'+text+'\nZ'])
+    for n in [1,2,3,15,16,17,31,32,33,63,64,65,127,128,129]:
+        for ch in [' ','\t','\r','\n','\u2003','\u2028']:
+            for suffix in ['X','\nX','\rX','\r\nX','\u2028X','']:
+                whitespace_inputs.add('a'+ch*n+suffix)
+    for text in sorted(whitespace_inputs):
         start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:

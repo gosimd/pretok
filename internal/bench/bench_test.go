@@ -34,7 +34,7 @@ func fixture(t *testing.T, text string) (string, Manifest) {
 		t.Fatal(err)
 	}
 	profiles := map[string]PatternSpec{}
-	for id, p := range map[string]string{"P01": compile.QwenMarksPattern, "P02": compile.ASCIITriplesPattern, "P05": compile.QwenPattern} {
+	for id, p := range map[string]string{"P01": compile.QwenMarksPattern, "P02": compile.ASCIITriplesPattern, "P03": compile.LineEndWhitespacePattern, "P05": compile.QwenPattern} {
 		profiles[id] = PatternSpec{Pattern: p, PatternSHA: Digest([]byte(p))}
 	}
 	m := Manifest{Schema: 3, Patterns: profiles, Corpora: []CorpusSpec{{ID: "test", Kind: "natural", File: "text.gz", SHA: Digest([]byte(text)), CompressedSHA: Digest(compressed.Bytes()), Bytes: len(text), Scalars: utf8.RuneCountInString(text), Batches: []BatchSpec{{Size: 256, File: "requests.json", SHA: Digest(request), Requests: 1}}}}}
@@ -243,5 +243,25 @@ func TestP02LiveGateWithGaps(t *testing.T) {
 	}
 	if slices.Contains(Engines(false), "onig-at") || !slices.Contains(Engines(true), "onig-at") {
 		t.Fatal("match-at diagnostic scope")
+	}
+}
+
+func TestP03LiveGate(t *testing.T) {
+	dir, _ := fixture(t, "a \nX")
+	m, batches, err := Load(dir, "P03")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := &batches[0]
+	re, err := pretok.Compile(m.Pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := reference(*b, m.Pattern, [][2]int{{1, 2}}, [][2]int{{0, 1}, {1, 2}, {2, 4}})
+	if err = Verify(re, m.PatternSHA, b, want); err != nil {
+		t.Fatal(err)
+	}
+	if b.Matches != 1 || b.Spans != 3 || m.FullCoverage {
+		t.Fatal("P03 gap profile")
 	}
 }

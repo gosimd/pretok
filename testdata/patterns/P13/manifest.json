@@ -1,0 +1,29 @@
+{
+  "pattern_id": "P13",
+  "pattern": "'(?i:[sdmt]|ll|ve|re)|[^\\r\\n\\p{L}\\p{N}]?+\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]++[\\r\\n]*|\\s*[\\r\\n]|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "8327a0649c7e541ee7f9d225d5700b3ef99cbac940f792e7eb5630b63fa4b3fb",
+  "source": {
+    "model_id": "inclusionAI/LLaDA2.0-mini",
+    "revision": "dad945cac317da394b390f82c7b40691d8a881ed",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/inclusionAI/LLaDA2.0-mini/blob/dad945cac317da394b390f82c7b40691d8a881ed/tokenizer.json",
+    "sha256": "0a1db22fe3dfb28f9b2be6d87f472af371b50235d7f5366ecac14b52ff8c002b",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "scanner_plan": "P05",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Exact alias of the P05 scanner, independently verified against live HF matches/splits on the common corpus. No stored output arrays."
+}
