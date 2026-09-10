@@ -4,11 +4,14 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) implements one scalar scanner plan. Exactly
-one corpus string is supported (P05); other strings, including equivalent aliases,
-return `ErrUnsupportedPattern`. SIMD and additional plans are not implemented.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01 and P05
+through a shared scalar template with immutable word/symbol parameters. The other
+23 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
+SIMD is not implemented.
 
-## Supported expression
+## Supported expressions
+
+P05:
 
 ```regex
 (?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+
@@ -18,24 +21,45 @@ This exact string occurs in Qwen/Qwen2.5-0.5B, among other corpus models. See th
 [fixture manifest](../testdata/qwen/manifest.json) for the model revision, original
 file hash, JSON pointer, split settings, and oracle binary hash.
 
+P01:
+
+```regex
+(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+
+```
+
+P01 includes Unicode marks in the word body and excludes them from symbol runs.
+Its prefix still excludes only CR/LF/L/N, so marks overlap the prefix and body.
+For example, `"a\u0301b"` stays one word, and a
+standalone combining mark is also a word match. The shared scanner consumes a
+leading mark as body: this selects the same endpoint as trying the greedy optional
+prefix, then retrying without it if no body remains. Contraction priority is
+unchanged: an initial `'s` still matches before a following combining mark.
+
+See [P01 fixtures](../testdata/patterns/P01/manifest.json) for pinned source and
+oracle details. Compatibility here is for matches and isolated splits; the source
+model's complete pre-tokenizer pipeline is not implemented by this library.
+
+The plan selects the L or L|M table at compilation time. The word and symbol
+scanners share that class, with one Unicode lookup and a common ASCII fast path.
+
 The [scalar plan](../internal/scan/plan.go) composes five private construction types:
 
 | Component | Behavior |
 | --- | --- |
 | `contractionSet` | Standalone apostrophe contractions with pinned case folding |
-| `prefixedLetters` | Optional single non-CR/LF/L/N prefix followed by letters |
+| `prefixedLetters` | Optional single non-CR/LF/L/N prefix followed by letters (P05) or letters/marks (P01) |
 | `singleNumber` | One Unicode N scalar, including Nd, Nl, and No |
-| `symbolRun` | Optional ASCII space, symbols outside whitespace/L/N, CR/LF suffix |
+| `symbolRun` | Optional ASCII space, symbols outside whitespace/L/N (also M for P01), CR/LF suffix |
 | `whitespaceRun` | One whitespace scan and an ordered decision for the last three alternatives |
 
-These types implement only P05's constructions; they are not a generic regex IR.
+These types implement P01/P05 constructions; they are not a generic regex IR.
 The whitespace scan records its end, the last rune's start, and the end of the
 last CR/LF. It chooses the CR/LF cut first, otherwise EOF, otherwise leaves the last
 whitespace scalar for the following match when possible. Higher-priority word
 and symbol alternatives are always tried first. Cuts never subtract a byte from
 a multibyte whitespace character.
 
-The regex covers all valid Unicode input, so `Cursor` and `Split` currently emit
+Both regexes cover all valid Unicode input, so `Cursor` and `Split` currently emit
 the same spans. Their distinct gap-handling contracts remain relevant for future
 patterns. There is no normalization, ByteLevel mapping, or BPE processing here.
 
@@ -64,7 +88,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. Only P05 is implemented; the remaining strings are future
+unique strings. P01 and P05 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

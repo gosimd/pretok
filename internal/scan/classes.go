@@ -19,11 +19,18 @@ func inRanges(r rune, ranges []runeRange) bool {
 	return false
 }
 
-func letter(r rune) bool {
+// wordClass is chosen once by the plan. Classification has one table lookup,
+// with the same ASCII fast path for both L and L|M (marks are non-ASCII).
+type wordClass struct{ ranges []runeRange }
+
+var letters = wordClass{ranges: letterRanges[:]}
+var lettersAndMarks = wordClass{ranges: wordMarkRanges[:]}
+
+func (c *wordClass) contains(r rune) bool {
 	if r < utf8.RuneSelf {
 		return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z'
 	}
-	return inRanges(r, letterRanges[:])
+	return inRanges(r, c.ranges)
 }
 
 func number(r rune) bool {
@@ -39,8 +46,6 @@ func space(r rune) bool {
 	}
 	return inRanges(r, spaceRanges[:])
 }
-
-func symbol(r rune) bool { return !space(r) && !letter(r) && !number(r) }
 
 func runeAt(src string, pos int) (rune, int) {
 	if src[pos] < utf8.RuneSelf {

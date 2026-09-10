@@ -1,0 +1,21 @@
+{
+  "baseline_commit": "5e798dbb3e007ec6b42a833c54b0d296fad3c4d6",
+  "pattern_id": "P05",
+  "go": "go1.27.0",
+  "cpu": "Apple M5",
+  "os": "Darwin 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:16:20 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8142",
+  "GOMAXPROCS": 1,
+  "rounds": 10,
+  "benchtime": "500ms",
+  "order": "AB then BA on alternate rounds",
+  "benchmark_harness": "Identical current regexp_test.go compiled against before/after library sources",
+  "benchmark_harness_sha256": "d5f2214ad7b3a0de5adcf7034a14467115a47b8d715c0104ce04c2a100d9d9eb",
+  "binary_sha256": {
+    "before": "20505f5c1dcc1f8f680d955e978e6be2da1e29a2e30fa23c7a0ec85f420acfa4",
+    "after": "41b20593fa7e06403ae9c61fe302142b945df3ecb24022f3a3fddf7a619008c4"
+  },
+  "started_utc": "2026-09-10T08:23:08.332016+00:00",
+  "complete": true,
+  "after_source_sha256": "cbafc59b6f23b5defba0a00923aada50ad5e3d05f61cffc859d874936e6926ca",
+  "finished_utc": "2026-09-10T08:23:56.522463+00:00"
+}

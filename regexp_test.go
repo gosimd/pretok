@@ -17,9 +17,13 @@ import (
 	"github.com/gosimd/pretok"
 )
 
+const patternMarks = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+
 const pattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
 
-func compiled(t testing.TB) *pretok.Regexp {
+func compiled(t testing.TB) *pretok.Regexp { return compiledPattern(t, pattern) }
+
+func compiledPattern(t testing.TB, pattern string) *pretok.Regexp {
 	t.Helper()
 	re, err := pretok.Compile(pattern)
 	if err != nil {
@@ -45,8 +49,19 @@ func collect(t testing.TB, re *pretok.Regexp, src string) []pretok.Span {
 }
 
 func TestOracle(t *testing.T) {
-	re := compiled(t)
-	manifestData, err := os.ReadFile("testdata/qwen/manifest.json")
+	testOracle(t, "testdata/qwen", pattern, "internal/scan/unicode_tables.go")
+}
+
+func TestP01Oracle(t *testing.T) {
+	testOracle(t, "testdata/patterns/P01", patternMarks, "internal/scan/word_tables.go")
+}
+
+func testOracle(t *testing.T, directory, pattern, table string) {
+	re, err := pretok.Compile(pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifestData, err := os.ReadFile(directory + "/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +77,7 @@ func TestOracle(t *testing.T) {
 	if manifest.Pattern != pattern {
 		t.Fatal("fixture pattern differs from compiled expression")
 	}
-	for path, want := range map[string]string{"testdata/qwen/cases.jsonl.gz": manifest.CasesSHA, "internal/scan/unicode_tables.go": manifest.TablesSHA} {
+	for path, want := range map[string]string{directory + "/cases.jsonl.gz": manifest.CasesSHA, table: manifest.TablesSHA} {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -72,7 +87,7 @@ func TestOracle(t *testing.T) {
 			t.Fatalf("%s differs from oracle manifest", path)
 		}
 	}
-	f, err := os.Open("testdata/qwen/cases.jsonl.gz")
+	f, err := os.Open(directory + "/cases.jsonl.gz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +147,7 @@ func assertPartition(t testing.TB, src string, spans []pretok.Span) {
 	}
 }
 
-func TestOnlyOneCorpusStringSupported(t *testing.T) {
+func TestSupportedCorpusStrings(t *testing.T) {
 	data, err := os.ReadFile("testdata/corpus_patterns.json")
 	if err != nil {
 		t.Fatal(err)
@@ -144,7 +159,7 @@ func TestOnlyOneCorpusStringSupported(t *testing.T) {
 	count := 0
 	for _, row := range rows {
 		re, err := pretok.Compile(row.Pattern)
-		if row.Pattern == pattern {
+		if row.Pattern == pattern || row.Pattern == patternMarks {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
@@ -153,10 +168,10 @@ func TestOnlyOneCorpusStringSupported(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 1 {
+	if count != 2 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
-	for _, p := range []string{"", "[", ".*", "(?:" + pattern + ")", pattern + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
+	for _, p := range []string{"", "[", ".*", "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
 		if re, err := pretok.Compile(p); re != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
 			t.Fatalf("accepted unknown %q", p)
 		}
@@ -164,7 +179,11 @@ func TestOnlyOneCorpusStringSupported(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	re := compiled(t)
+	for id, p := range map[string]string{"P01": patternMarks, "P05": pattern} {
+		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p)) })
+	}
+}
+func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp) {
 	storage := make([]pretok.Span, 32)
 	for i := range storage {
 		storage[i] = pretok.Span{Start: 91, End: 92}
@@ -221,7 +240,11 @@ func TestOwnershipAndErrors(t *testing.T) {
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	re := compiled(t)
+	for id, p := range map[string]string{"P01": patternMarks, "P05": pattern} {
+		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
+	}
+}
+func testConcurrentReuse(t *testing.T, re *pretok.Regexp) {
 	text := "We're １２3\r\n\u2003\u2003世界!"
 	want := collect(t, re, text)
 	var wg sync.WaitGroup
@@ -243,11 +266,13 @@ func TestConcurrentReuse(t *testing.T) {
 	wg.Wait()
 }
 
-func FuzzQwenPartition(f *testing.F) {
+func FuzzP01Partition(f *testing.F)  { fuzzPartition(f, patternMarks) }
+func FuzzQwenPartition(f *testing.F) { fuzzPartition(f, pattern) }
+func fuzzPartition(f *testing.F, pattern string) {
 	for _, s := range []string{"", "we're", "\u2003\u2003X", "a\u0301b", "²Ⅳ１２3", "\r\n\tX", "\xff"} {
 		f.Add(s)
 	}
-	re := compiled(f)
+	re := compiledPattern(f, pattern)
 	f.Fuzz(func(t *testing.T, src string) {
 		got, err := re.Split(src, nil)
 		if !utf8.ValidString(src) {
@@ -265,27 +290,6 @@ func FuzzQwenPartition(f *testing.F) {
 			t.Fatal("cursor/split mismatch")
 		}
 	})
-}
-
-func BenchmarkQwenSplit(b *testing.B) {
-	re := compiled(b)
-	for name, src := range map[string]string{"short": "Hello, we're here! 123", "multilingual": strings.Repeat("世界 Привет! we're １２3\r\n\u2003\u2003X ", 64)} {
-		b.Run(name, func(b *testing.B) {
-			dst, err := re.Split(src, nil)
-			if err != nil {
-				b.Fatal(err)
-			}
-			b.SetBytes(int64(len(src)))
-			b.ReportAllocs()
-			b.ResetTimer()
-			for b.Loop() {
-				dst, err = re.Split(src, dst[:0])
-				if err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
 }
 
 func TestQwenExamples(t *testing.T) {
@@ -327,17 +331,61 @@ func BenchmarkCompile(b *testing.B) {
 	}
 }
 
-func BenchmarkQwenSplitFresh(b *testing.B) {
-	re := compiled(b)
+func BenchmarkQwenSplit(b *testing.B)      { benchmarkSplit(b, pattern, false) }
+func BenchmarkQwenSplitFresh(b *testing.B) { benchmarkSplit(b, pattern, true) }
+func BenchmarkP01Split(b *testing.B)       { benchmarkSplit(b, patternMarks, false) }
+func BenchmarkP01SplitFresh(b *testing.B)  { benchmarkSplit(b, patternMarks, true) }
+
+func benchmarkSplit(b *testing.B, pattern string, fresh bool) {
+	re := compiledPattern(b, pattern)
 	for name, src := range map[string]string{"short": "Hello, we're here! 123", "multilingual": strings.Repeat("世界 Привет! we're １２3\r\n\u2003\u2003X ", 64)} {
 		b.Run(name, func(b *testing.B) {
+			dst, err := re.Split(src, nil)
+			if err != nil {
+				b.Fatal(err)
+			}
 			b.SetBytes(int64(len(src)))
 			b.ReportAllocs()
+			b.ResetTimer()
 			for b.Loop() {
-				if _, err := re.Split(src, nil); err != nil {
+				if fresh {
+					dst = nil
+				}
+				dst, err = re.Split(src, dst[:0])
+				if err != nil {
 					b.Fatal(err)
 				}
 			}
 		})
+	}
+}
+
+func TestP01Marks(t *testing.T) {
+	re := compiledPattern(t, patternMarks)
+	for _, tc := range []struct {
+		text   string
+		pieces []string
+	}{
+		{"a\u0301b", []string{"a\u0301b"}},
+		{"\u0301", []string{"\u0301"}},
+		{"\u0301\u0301", []string{"\u0301\u0301"}},
+		{"!\u0301a", []string{"!\u0301a"}},
+		{"!!\u0301a", []string{"!!", "\u0301a"}},
+		{" \u0301", []string{" \u0301"}},
+		{"\u0301!", []string{"\u0301", "!"}},
+		{"'s\u0301", []string{"'s", "\u0301"}},
+		{"1\u0301", []string{"1", "\u0301"}},
+	} {
+		spans, err := re.Split(tc.text, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pieces []string
+		for _, s := range spans {
+			pieces = append(pieces, tc.text[s.Start:s.End])
+		}
+		if !slices.Equal(pieces, tc.pieces) {
+			t.Errorf("%q: got %q want %q", tc.text, pieces, tc.pieces)
+		}
 	}
 }

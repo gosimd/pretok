@@ -1,0 +1,32 @@
+{
+  "pattern_id": "P01",
+  "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+  "source": {
+    "model_id": "BakeLab/Kallisti-35B-A3B",
+    "revision": "d1f12b7be0cab566eb46c12985484e46cfa532a3",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/BakeLab/Kallisti-35B-A3B/blob/d1f12b7be0cab566eb46c12985484e46cfa532a3/tokenizer.json",
+    "sha256": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "oracle_native_sha256": "899b244f19f1ddd6506c45ea0f7163f38952f2a552272a687a6ef4b9ddcc7327",
+  "case_count": 26820,
+  "cases_sha256": "17704c3a2fc55f70af10082ed12f00b19f0458d46506bcb1204d1dd2655f2282",
+  "tables_sha256": "e9db25b0d64a2ac8f36705c97e099605bb27275cff3f9fa829ed7d23b1c79db9",
+  "generator_sha256": "1bcb0a0758bb4306a013f889a0a6b47428c31232ac7e2a9f4acfc9a495030804",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  }
+}

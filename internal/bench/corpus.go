@@ -18,12 +18,17 @@ import (
 	"github.com/gosimd/pretok"
 )
 
+type PatternSpec struct {
+	Pattern    string `json:"pattern"`
+	PatternSHA string `json:"pattern_sha256"`
+	FixtureSHA string `json:"fixture_sha256"`
+}
 type Manifest struct {
-	Schema     int          `json:"schema"`
-	Pattern    string       `json:"pattern"`
-	PatternSHA string       `json:"pattern_sha256"`
-	FixtureSHA string       `json:"fixture_sha256"`
-	Corpora    []CorpusSpec `json:"corpora"`
+	Schema   int                    `json:"schema"`
+	Patterns map[string]PatternSpec `json:"patterns"`
+	Corpora  []CorpusSpec           `json:"corpora"`
+	// Selected profile for the caller; all inputs come from the common manifest.
+	PatternSpec `json:"-"`
 }
 type CorpusSpec struct {
 	ID            string      `json:"id"`
@@ -38,11 +43,11 @@ type CorpusSpec struct {
 	Batches       []BatchSpec `json:"batches"`
 }
 type BatchSpec struct {
-	Size     int    `json:"size"`
-	File     string `json:"file"`
-	SHA      string `json:"sha256"`
-	Requests int    `json:"requests"`
-	Spans    int    `json:"spans"`
+	Size     int            `json:"size"`
+	File     string         `json:"file"`
+	SHA      string         `json:"sha256"`
+	Requests int            `json:"requests"`
+	Spans    map[string]int `json:"spans"`
 }
 type Request struct {
 	Text     string
@@ -80,16 +85,31 @@ func ReadGzip(root, name, sha string) ([]byte, error) {
 	defer r.Close()
 	return io.ReadAll(r)
 }
-func Load(root string) (Manifest, []Batch, error) {
+
+// Load selects reference boundaries from the common corpus without changing
+// the text pools, request ranges, or workload selection.
+func Load(root, patternID string) (Manifest, []Batch, error) {
 	var manifest Manifest
-	raw, err := os.ReadFile(filepath.Join(root, "manifest.json"))
+	path, err := file(root, "manifest.json")
+	if err != nil {
+		return manifest, nil, err
+	}
+	raw, err := os.ReadFile(path)
 	if err != nil {
 		return manifest, nil, fmt.Errorf("read corpus manifest: %w; run benchmark/prepare/corpus.py first", err)
 	}
 	if err = json.Unmarshal(raw, &manifest); err != nil {
 		return manifest, nil, err
 	}
-	if manifest.Schema != 1 || Digest([]byte(manifest.Pattern)) != manifest.PatternSHA {
+	if manifest.Schema != 2 {
+		return manifest, nil, fmt.Errorf("unsupported corpus schema %d", manifest.Schema)
+	}
+	selected, ok := manifest.Patterns[patternID]
+	if !ok {
+		return manifest, nil, fmt.Errorf("missing pattern %q in common corpus manifest", patternID)
+	}
+	manifest.PatternSpec = selected
+	if Digest([]byte(manifest.Pattern)) != manifest.PatternSHA {
 		return manifest, nil, fmt.Errorf("invalid manifest schema or pattern hash")
 	}
 	re, err := pretok.Compile(manifest.Pattern)
@@ -135,9 +155,9 @@ func Load(root string) (Manifest, []Batch, error) {
 				return manifest, nil, err
 			}
 			var cases []struct {
-				Start int      `json:"start"`
-				End   int      `json:"end"`
-				Spans [][2]int `json:"spans"`
+				Start int                 `json:"start"`
+				End   int                 `json:"end"`
+				Spans map[string][][2]int `json:"spans"`
 			}
 			if err = json.Unmarshal(raw, &cases); err != nil {
 				return manifest, nil, err
@@ -153,9 +173,13 @@ func Load(root string) (Manifest, []Batch, error) {
 				}
 				previous = tc.End
 				src := text[tc.Start:tc.End]
-				want := make([]pretok.Span, len(tc.Spans))
+				spans, ok := tc.Spans[patternID]
+				if !ok {
+					return manifest, nil, fmt.Errorf("missing %s reference in %s/%d request %d", patternID, c.ID, spec.Size, i)
+				}
+				want := make([]pretok.Span, len(spans))
 				end := 0
-				for j, s := range tc.Spans {
+				for j, s := range spans {
 					if s[0] != end || s[1] <= s[0] || s[1] > len(src) || !utf8.ValidString(src[s[0]:s[1]]) {
 						return manifest, nil, fmt.Errorf("invalid reference span %s/%d/%d/%d", c.ID, spec.Size, i, j)
 					}
@@ -188,7 +212,8 @@ func Load(root string) (Manifest, []Batch, error) {
 				b.Scalars += utf8.RuneCountInString(src)
 				b.Spans += len(want)
 			}
-			if previous != len(text) || b.Spans != spec.Spans {
+			total, ok := spec.Spans[patternID]
+			if !ok || previous != len(text) || b.Spans != total {
 				return manifest, nil, fmt.Errorf("batch totals mismatch")
 			}
 			batches = append(batches, b)

@@ -26,29 +26,29 @@ func (contractionSet) match(src string, pos int) int {
 	return pos
 }
 
-// prefixedLetters implements [^\r\n\p{L}\p{N}]?\p{L}+.
-// Prefix and body classes are disjoint in this pattern; marks belong only to
-// the optional prefix, so no prefix retry or mark-body extension is needed.
-type prefixedLetters struct{}
+// prefixedLetters implements the optional non-CR/LF/L/N prefix followed by
+// L+ (P05) or (L|M)+ (P01). A leading mark belongs to both the P01 prefix
+// and body. Consuming it as body selects the same endpoint as greedy prefix
+// consumption followed by a retry without the prefix when the body is empty.
+type prefixedLetters struct{ class *wordClass }
 
-func (prefixedLetters) match(src string, pos int) int {
-	r, size := runeAt(src, pos)
+func (p prefixedLetters) match(src string, pos int) int {
 	end := pos
-	if !letter(r) {
-		if r == '\r' || r == '\n' || number(r) {
-			return pos
-		}
-		end += size
-	}
-	body := end
+	haveBody := false
 	for end < len(src) {
-		r, size = runeAt(src, end)
-		if !letter(r) {
-			break
+		r, size := runeAt(src, end)
+		if p.class.contains(r) {
+			haveBody = true
+			end += size
+			continue
 		}
-		end += size
+		if end == pos && r != '\r' && r != '\n' && !number(r) {
+			end += size // optional prefix, still requiring a non-empty body
+			continue
+		}
+		break
 	}
-	if end == body {
+	if !haveBody {
 		return pos
 	}
 	return end
@@ -66,11 +66,11 @@ func (singleNumber) match(src string, pos int) int {
 }
 
 // symbolRun implements an optional ASCII space, a non-empty run outside
-// whitespace/L/N, and a greedy suffix of CR and LF. Apostrophes inside an
+// whitespace/N/word-class, and a greedy suffix of CR and LF. Apostrophes inside an
 // already-started symbol run do not restart the higher-priority contraction rule.
-type symbolRun struct{}
+type symbolRun struct{ class *wordClass }
 
-func (symbolRun) match(src string, pos int) int {
+func (p symbolRun) match(src string, pos int) int {
 	end := pos
 	if src[end] == ' ' {
 		end++
@@ -78,7 +78,7 @@ func (symbolRun) match(src string, pos int) int {
 	body := end
 	for end < len(src) {
 		r, size := runeAt(src, end)
-		if !symbol(r) {
+		if space(r) || p.class.contains(r) || number(r) {
 			break
 		}
 		end += size

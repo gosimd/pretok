@@ -18,6 +18,7 @@ import (
 
 	"github.com/gosimd/pretok"
 	"github.com/gosimd/pretok/internal/bench"
+	"github.com/gosimd/pretok/internal/compile"
 )
 
 type native struct {
@@ -26,8 +27,8 @@ type native struct {
 	out *bufio.Reader
 }
 
-func startNative(executable, corpus, fixture string) (*native, map[string]any, error) {
-	cmd := exec.Command(executable, corpus, fixture)
+func startNative(executable, corpus, fixture, patternID string) (*native, map[string]any, error) {
+	cmd := exec.Command(executable, corpus, fixture, patternID)
 	cmd.Stderr = os.Stderr
 	in, err := cmd.StdinPipe()
 	if err != nil {
@@ -142,6 +143,7 @@ func main() {
 	}
 }
 func run() error {
+	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01 or P05")
 	root := flag.String("root", ".", "repository root")
 	corpus := flag.String("corpus", "benchmark/corpus", "corpus path relative to root")
 	reference := flag.String("native", "benchmark/native/target/release/pretok-reference", "native executable path relative to root")
@@ -171,11 +173,22 @@ func run() error {
 	} else if !os.IsNotExist(err) {
 		return err
 	}
+	fixture, expectedPattern := "testdata/qwen/cases.jsonl.gz", compile.QwenPattern
+	switch *patternID {
+	case "P01":
+		fixture, expectedPattern = "testdata/patterns/P01/cases.jsonl.gz", compile.QwenMarksPattern
+	case "P05":
+	default:
+		return fmt.Errorf("unsupported benchmark pattern %q", *patternID)
+	}
 	runtime.GOMAXPROCS(1)
 	fmt.Fprintln(os.Stderr, "Verifying Go spans against pinned corpus requests...")
-	manifest, batches, err := bench.Load(corpusPath)
+	manifest, batches, err := bench.Load(corpusPath, *patternID)
 	if err != nil {
 		return err
+	}
+	if manifest.Pattern != expectedPattern {
+		return fmt.Errorf("manifest pattern differs from selected %s", *patternID)
 	}
 	var selected []bench.Batch
 	for _, b := range batches {
@@ -187,7 +200,7 @@ func run() error {
 		return fmt.Errorf("filter selected no workloads")
 	}
 	fmt.Fprintln(os.Stderr, "Verifying native Oniguruma/HF against original fixtures and every corpus request...")
-	ref, ready, err := startNative(refPath, corpusPath, resolve("testdata/qwen/cases.jsonl.gz"))
+	ref, ready, err := startNative(refPath, corpusPath, resolve(fixture), *patternID)
 	if err != nil {
 		return err
 	}
@@ -198,7 +211,7 @@ func run() error {
 	}
 	executable, _ := os.Executable()
 	gitDiff := command("git", "-C", absolute, "diff", "--binary", "HEAD")
-	env := map[string]any{"started_utc": time.Now().UTC().Format(time.RFC3339), "complete": false, "go": runtime.Version(), "rust": command("rustc", "-Vv"), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpu": command("sysctl", "-n", "machdep.cpu.brand_string"), "os_version": command("uname", "-srv"), "workers": 1, "go_allocator": "Go runtime, default GC", "native_allocator": "Rust System + Oniguruma C allocator; counters unavailable", "go_build": command("go", "version", "-m", executable), "native_build": "cargo build --release --locked; thin LTO; 1 codegen unit; default CPU target", "git_commit": command("git", "-C", absolute, "rev-parse", "HEAD"), "git_status": command("git", "-C", absolute, "status", "--short"), "git_diff_sha256": bench.Digest([]byte(gitDiff)), "source_sha256": sourceSHA(absolute), "native_binary_sha256": fileSHA(refPath), "go_binary_sha256": fileSHA(executable), "cargo_lock_sha256": fileSHA(resolve("benchmark/native/Cargo.lock")), "corpus_manifest_sha256": fileSHA(filepath.Join(corpusPath, "manifest.json")), "pattern_sha256": manifest.PatternSHA, "native_gate": ready, "samples": *samples, "min_time_ns": int64(*minTime), "filter": *filter, "selected_batches": len(selected), "backend": "scalar", "utf8": "timed public validation on both sides", "rustflags": os.Getenv("RUSTFLAGS"), "goflags": os.Getenv("GOFLAGS")}
+	env := map[string]any{"started_utc": time.Now().UTC().Format(time.RFC3339), "complete": false, "go": runtime.Version(), "rust": command("rustc", "-Vv"), "os": runtime.GOOS, "arch": runtime.GOARCH, "cpu": command("sysctl", "-n", "machdep.cpu.brand_string"), "os_version": command("uname", "-srv"), "workers": 1, "go_allocator": "Go runtime, default GC", "native_allocator": "Rust System + Oniguruma C allocator; counters unavailable", "go_build": command("go", "version", "-m", executable), "native_build": "cargo build --release --locked; thin LTO; 1 codegen unit; default CPU target", "git_commit": command("git", "-C", absolute, "rev-parse", "HEAD"), "git_status": command("git", "-C", absolute, "status", "--short"), "git_diff_sha256": bench.Digest([]byte(gitDiff)), "source_sha256": sourceSHA(absolute), "native_binary_sha256": fileSHA(refPath), "go_binary_sha256": fileSHA(executable), "cargo_lock_sha256": fileSHA(resolve("benchmark/native/Cargo.lock")), "corpus_manifest_sha256": fileSHA(filepath.Join(corpusPath, "manifest.json")), "pattern_sha256": manifest.PatternSHA, "native_gate": ready, "samples": *samples, "min_time_ns": int64(*minTime), "filter": *filter, "selected_batches": len(selected), "pattern_id": *patternID, "backend": "scalar", "utf8": "timed public validation on both sides", "rustflags": os.Getenv("RUSTFLAGS"), "goflags": os.Getenv("GOFLAGS")}
 	env["input_layout"] = "contiguous corpus storage with request views in both runners"
 	if *cpuLabel != "" {
 		env["cpu"] = *cpuLabel
@@ -224,6 +237,7 @@ func run() error {
 	defer raw.Close()
 	var results []bench.Sample
 	record := func(s bench.Sample) error {
+		s.PatternID = *patternID
 		results = append(results, s)
 		if err := json.NewEncoder(raw).Encode(s); err != nil {
 			return err
@@ -316,7 +330,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	err = bench.WriteReport(report, results, "environment.json")
+	err = bench.WriteReport(report, results, "environment.json", *patternID)
 	closeErr := report.Close()
 	if err != nil {
 		return err

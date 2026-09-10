@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P05, with five pinned natural-language pools,
+**Status:** implemented for scalar P01 and P05, with five pinned natural-language pools,
 one synthetic pool, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
@@ -13,8 +13,9 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-The initial matrix uses only the exact supported P05 string from the
-[fixture manifest](../testdata/qwen/manifest.json). Compile once before timing scans.
+Select P01 or P05 with `-pattern`. Each run uses one exact supported string and its
+own [P01](../testdata/patterns/P01/manifest.json) or
+[P05](../testdata/qwen/manifest.json) fixture manifest. Compile once before timing scans.
 Use the exact same decoded regex, input bytes, subject boundaries, and output
 semantics in every comparison. Broader tokenizer pipelines are a later integration
 benchmark in `gosimd/bpe`.
@@ -25,9 +26,9 @@ benchmark in `gosimd/bpe`.
 | --- | --- | --- | --- |
 | Compilation | `Compile(pattern)` | Native Oniguruma compilation; HF Split construction separately | One-time setup cost |
 | Match iteration | `Cursor` and repeated `Next` | Native Oniguruma `find_iter` | Complete ordered sequence of match spans |
-| Position matching, diagnostic | Internal Go counterpart deferred | Native Oniguruma match-at-offset loop, including input validation | Additional P05 measurement; no core speedup ratio yet |
+| Position matching, diagnostic | Internal Go counterpart deferred | Native Oniguruma match-at-offset loop, including input validation | Additional P01/P05 measurement; no core speedup ratio yet |
 | Public splitting | `Split(src, dst[:0])` and `Split(src, nil)` separately | Oniguruma iteration plus isolated-gap adapter and span output | Same output, with reused and fresh destination policies |
-| HF splitting stage | Public `Split` | Native HF `Split(Regex(P05), Isolated, invert=false)` plus byte-offset extraction | Complete boundary-stage API cost, including HF representation overhead |
+| HF splitting stage | Public `Split` | Native HF `Split(Regex(pattern), Isolated, invert=false)` plus byte-offset extraction | Complete boundary-stage API cost, including HF representation overhead |
 | Future optimized backend | Public API using SIMD | The same API using the scalar plan | Backend-only improvement on the same semantics and allocation policy |
 
 The primary regex engine is **Oniguruma**, through the same resolved `onig` /
@@ -38,7 +39,7 @@ must pin the actual dependency resolution with a lockfile and report it.
 [HF wrapper](https://github.com/huggingface/tokenizers/blob/v0.22.2/tokenizers/src/utils/onig.rs),
 [HF dependency configuration](https://github.com/huggingface/tokenizers/blob/v0.22.2/tokenizers/Cargo.toml).
 
-Go's standard `regexp` package uses RE2 syntax, which cannot directly execute P05's
+Go's standard `regexp` package uses RE2 syntax, which cannot directly execute P01/P05's
 negative lookahead. Removing or rewriting that branch would change the workload.
 It is therefore not a primary baseline for this expression. Other engines may be
 added as explicitly versioned, correctness-checked competitors; a .NET/PCRE-style
@@ -49,8 +50,8 @@ engine is not automatically an HF semantic reference.
 ### The MatchPrefix proposal
 
 Treat `MatchPrefix` as the operation "match this complete regex at this byte
-position", not a loop over separately compiled alternatives. P05 covers every
-valid scalar, so the following diagnostic is valid for P05:
+position", not a loop over separately compiled alternatives. Both P01 and P05 cover every
+valid scalar, so the following diagnostic is valid for both patterns:
 
 ```text
 pos = 0
@@ -144,7 +145,7 @@ Record per pool:
 
 - Source repository, immutable revision, subset, split, shard paths, row/article
   IDs, original article URLs where available, and extraction-script revision.
-- Exact joining/truncation rules, file hash, byte length, scalar count, and P05 span
+- Exact joining/truncation rules, file hash, byte length, scalar count, and pattern-specific span
   count. The source article attributions and license notice accompany the samples;
   dataset text must not silently inherit the library's MIT license.
 - ASCII-byte fraction, Unicode-whitespace and number frequencies, average span
@@ -187,7 +188,7 @@ Before timing each engine on a batch:
 - Compare every ordered `(Start, End)` byte span against the pinned HF oracle for
   that exact request. Counts and checksums alone do not prove equality.
 - Verify non-empty spans, valid scalar boundaries, gap policy, and reconstruction
-  for isolated splitting. P05's match-only and isolated outputs coincide because
+  for isolated splitting. P01/P05's match-only and isolated outputs coincide because
   it covers the input; retain the policy labels for future patterns.
 - Confirm dependency-resolved native Oniguruma behavior against existing fixtures;
   a crate version alone does not establish parity with the recorded Python wheel.
@@ -289,6 +290,8 @@ remain smoke checks and do not replace this cross-engine report.
 
 Follow the [publication policy](../benchmark/results/README.md): retain only
 selected completed results in Git, keyed by exact regex identity rather than
-model name. Future patterns share text pools but require their own oracle spans
-and manifests. The runner currently targets P05; multi-pattern orchestration is
-deferred until additional patterns are implemented and validated.
+model name. All patterns share text pools, request files, and one corpus manifest.
+Reference spans and counts are keyed by pattern ID within those common files.
+Add any new scenarios to the common corpus. The runner selects P01 or P05 per
+invocation. Broader support requires
+implementing and validating each additional pattern.

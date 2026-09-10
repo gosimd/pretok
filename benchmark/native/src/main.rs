@@ -19,10 +19,15 @@ use tokenizers::{
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 #[derive(Deserialize)]
-struct Manifest {
+struct Pattern {
     pattern: String,
     pattern_sha256: String,
     fixture_sha256: String,
+}
+#[derive(Deserialize)]
+struct Manifest {
+    schema: u32,
+    patterns: BTreeMap<String, Pattern>,
     corpora: Vec<Corpus>,
 }
 #[derive(Deserialize)]
@@ -40,13 +45,13 @@ struct BatchSpec {
     file: String,
     sha256: String,
     requests: usize,
-    spans: usize,
+    spans: BTreeMap<String, usize>,
 }
 #[derive(Deserialize)]
 struct Request {
     start: usize,
     end: usize,
-    spans: Vec<(usize, usize)>,
+    spans: BTreeMap<String, Vec<(usize, usize)>>,
 }
 struct Batch {
     data: Arc<[u8]>,
@@ -160,22 +165,29 @@ struct FixtureSpan {
 }
 fn main() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    if args.len() != 3 {
-        return Err("usage: pretok-reference CORPUS_DIR ORIGINAL_FIXTURES_GZ".into());
+    if args.len() != 4 {
+        return Err("usage: pretok-reference CORPUS_DIR ORIGINAL_FIXTURES_GZ PATTERN_ID".into());
     }
     let root = PathBuf::from(&args[1]);
     let manifest: Manifest = serde_json::from_slice(&fs::read(root.join("manifest.json"))?)?;
-    if digest(manifest.pattern.as_bytes()) != manifest.pattern_sha256 {
+    if manifest.schema != 2 {
+        return Err("unsupported corpus schema".into());
+    }
+    let selected = manifest
+        .patterns
+        .get(&args[3])
+        .ok_or("pattern missing from corpus manifest")?;
+    if digest(selected.pattern.as_bytes()) != selected.pattern_sha256 {
         return Err("pattern hash mismatch".into());
     }
-    let re = Regex::new(&manifest.pattern)?;
+    let re = Regex::new(&selected.pattern)?;
     let split = Split::new(
-        SplitPattern::Regex(manifest.pattern.clone()),
+        SplitPattern::Regex(selected.pattern.clone()),
         SplitDelimiterBehavior::Isolated,
         false,
     )?;
     // The wheel oracle and the newly resolved native build must agree before any timing.
-    let fixture_data = gunzip(Path::new(&args[2]), &manifest.fixture_sha256)?;
+    let fixture_data = gunzip(Path::new(&args[2]), &selected.fixture_sha256)?;
     let mut fixture_count = 0;
     for line in fixture_data
         .split(|b| *b == b'\n')
@@ -230,34 +242,31 @@ fn main() -> Result<()> {
                     .get(case.start..case.end)
                     .ok_or("invalid request range")?;
                 let label = format!("{}/{}/{}", corpus.id, spec.size, i);
-                equal(
-                    "hf-split",
-                    &label,
-                    src,
-                    &hf_spans(&split, src)?,
-                    &case.spans,
-                )?;
-                equal(
-                    "onig-split",
-                    &label,
-                    src,
-                    &onig_spans(&re, src),
-                    &case.spans,
-                )?;
+                let spans = case
+                    .spans
+                    .get(&args[3])
+                    .ok_or("pattern reference missing from request")?;
+                equal("hf-split", &label, src, &hf_spans(&split, src)?, spans)?;
+                equal("onig-split", &label, src, &onig_spans(&re, src), spans)?;
                 equal(
                     "onig-iter",
                     &label,
                     src,
                     &re.find_iter(src).collect::<Vec<_>>(),
-                    &case.spans,
+                    spans,
                 )?;
-                equal("onig-at", &label, src, &at_spans(&re, src)?, &case.spans)?;
+                equal("onig-at", &label, src, &at_spans(&re, src)?, spans)?;
                 byte_count += src.len();
-                count += case.spans.len();
+                count += spans.len();
                 requests.push((case.start, case.end));
-                expected.push(case.spans);
+                expected.push(spans.clone());
             }
-            if count != spec.spans {
+            if count
+                != *spec
+                    .spans
+                    .get(&args[3])
+                    .ok_or("pattern span count missing")?
+            {
                 return Err("span count mismatch".into());
             }
             batches.insert(
@@ -286,7 +295,7 @@ fn main() -> Result<()> {
             break;
         }
         let result = if command.op == "compile" {
-            compile_sample(&manifest.pattern, &command.engine, command.min_ms)
+            compile_sample(&selected.pattern, &command.engine, command.min_ms)
         } else {
             let batch = batches
                 .get(&(command.corpus, command.size))

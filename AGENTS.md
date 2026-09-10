@@ -4,8 +4,8 @@
 
 Build `github.com/gosimd/pretok` as a compiler for common pre-tokenization regex
 patterns into specialized scanners. Follow the design and status in `README.md`.
-The root API and one scalar plan are implemented: corpus P05 only. The other 24
-strings and SIMD remain unsupported. Keep compatibility claims scoped to this plan
+The root API and a shared scalar template are implemented for P01 and P05. The
+other 23 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
 Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary

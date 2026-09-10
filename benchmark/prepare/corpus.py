@@ -119,11 +119,17 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     assert tokenizers.__version__=='0.22.2'
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
-    fixture=json.loads((ROOT/'testdata/qwen/manifest.json').read_text())
-    pre=pre_tokenizers.Split(Regex(fixture['pattern']),'isolated',invert=False)
-    manifest={'schema':1,'pattern':fixture['pattern'],'pattern_sha256':fixture['pattern_sha256'],
+    patterns={}
+    scanners={}
+    for ident,directory in [('P01','testdata/patterns/P01'),('P05','testdata/qwen')]:
+        fixture_dir=ROOT/directory
+        fixture=json.loads((fixture_dir/'manifest.json').read_text())
+        patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
+        patterns[ident]['fixture_sha256']=sha((fixture_dir/'cases.jsonl.gz').read_bytes())
+        scanners[ident]=pre_tokenizers.Split(Regex(fixture['pattern']),'isolated',invert=False)
+    manifest={'schema':2,'patterns':patterns,
               'oracle_version':tokenizers.__version__,'oracle_native_sha256':sha((Path(tokenizers.__file__).parent/'tokenizers.abi3.so').read_bytes()),
-              'generator_sha256':sha(Path(__file__).read_bytes()),'fixture_sha256':sha((ROOT/'testdata/qwen/cases.jsonl.gz').read_bytes()),
+              'generator_sha256':sha(Path(__file__).read_bytes()),
               'selection':'Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.', 'corpora':[]}
     pools=[]
     for source in SOURCES:
@@ -144,20 +150,21 @@ def main():
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:
         name=ident+'.txt.gz'; compressed=write_gzip(dest/name,data)
-        text=data.decode(); spans=expected(pre,data)
+        text=data.decode()
+        whole={ident:expected(pre,data) for ident,pre in scanners.items()}
         row={'id':ident,'kind':kind,'file':name,'sha256':sha(data),'compressed_sha256':compressed,'bytes':len(data),'scalars':len(text),
-             'ascii_fraction':sum(b<128 for b in data)/len(data),'whole_spans':len(spans),
-             'max_span_bytes':max((b-a for a,b in spans),default=0),'mean_span_bytes':len(data)/max(1,len(spans)),
+             'ascii_fraction':sum(b<128 for b in data)/len(data),
+             'pattern_stats':{ident:{'whole_spans':len(spans),'max_span_bytes':max((b-a for a,b in spans),default=0),'mean_span_bytes':len(data)/max(1,len(spans))} for ident,spans in whole.items()},
              'source_file':ident+'.source.json' if kind=='natural' else None,'batches':[]}
         if kind=='natural':row['source_sha256']=sha((dest/row['source_file']).read_bytes())
         for cls,regex in [('whitespace',r'\s'),('number',r'\p{N}')]:
             row[cls+'_scalars']=len(pre_tokenizers.Split(Regex(regex),'removed',invert=True).pre_tokenize_str(text))
         for size,ranges in groups:
-            requests=[{'start':a,'end':b,'spans':expected(pre,data[a:b])} for a,b in ranges]
+            requests=[{'start':a,'end':b,'spans':{ident:expected(pre,data[a:b]) for ident,pre in scanners.items()}} for a,b in ranges]
             payload=json.dumps(requests,separators=(',',':')).encode()
             file=ident+'-'+str(size)+'.json.gz'
             digest=write_gzip(dest/file,payload)
-            row['batches'].append({'size':size,'file':file,'sha256':digest,'requests':len(requests),'spans':sum(len(r['spans']) for r in requests)})
+            row['batches'].append({'size':size,'file':file,'sha256':digest,'requests':len(requests),'spans':{ident:sum(len(r['spans'][ident]) for r in requests) for ident in scanners}})
         manifest['corpora'].append(row)
     (dest/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
     print('Prepared',len(pools),'pools and',sum(len(p['batches']) for p in manifest['corpora']),'batches',flush=True)

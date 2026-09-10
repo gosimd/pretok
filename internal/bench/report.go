@@ -50,10 +50,10 @@ func Summaries(samples []Sample) []Summary {
 	}
 	return out
 }
-func WriteReport(destination io.Writer, samples []Sample, environmentFile string) error {
+func WriteReport(destination io.Writer, samples []Sample, environmentFile, patternID string) error {
 	var buffer bytes.Buffer
 	var w io.Writer = &buffer
-	fmt.Fprint(w, "# P05 benchmark\n\nNative Oniguruma and HF Split versus the public scalar pretok API. All request boundaries passed exact oracle comparison before timing. UTF-8 validation is inside each public operation; native Rust allocation counters are unavailable.\n\n")
+	fmt.Fprintf(w, "# %s benchmark\n\nNative Oniguruma and HF Split versus the public scalar pretok API. All request boundaries passed exact oracle comparison before timing. UTF-8 validation is inside each public operation; native Rust allocation counters are unavailable.\n\n", patternID)
 	fmt.Fprintf(w, "Environment and source fingerprints: [%s](%s). Raw samples: [samples.jsonl](samples.jsonl).\n\n", environmentFile, environmentFile)
 	summaries := Summaries(samples)
 	short := false

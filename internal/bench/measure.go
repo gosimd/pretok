@@ -12,6 +12,7 @@ import (
 // Sample always measures one complete corpus batch per iteration. Compile rows
 // use one construction per iteration instead. Allocation values are separate runs.
 type Sample struct {
+	PatternID      string   `json:"pattern_id,omitempty"`
 	Engine         string   `json:"engine"`
 	Corpus         string   `json:"corpus"`
 	Kind           string   `json:"kind"`
