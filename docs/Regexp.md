@@ -4,10 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P07, P09, P13, P16, P19, P20, and P24.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P09, P11, P13, P16–P21, P23, and P24.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
 an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
-ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. The other 12
+ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. P08/P11/P17/P18/P21/P23 share exact-set run search. The other 6
 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
@@ -235,7 +235,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01–P07, P09, P13, P16, P19, P20, and P24 are implemented; the remaining strings are future
+unique strings. P01–P09, P11, P13, P16–P21, P23, and P24 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any
@@ -315,3 +315,35 @@ previous-stage piece separately to preserve existing boundaries. Offsets are the
 relative to that piece; the caller adds its base offset when needed. Normalization,
 special-token handling, ByteLevel mapping, BPE merges, and token IDs remain outside
 `pretok`.
+
+## Exact literal sets: P08, P11, P17, P18, P21, P23
+
+All six are partial matchers: `Cursor` skips gaps, while `Split` preserves maximal
+unmatched gaps as separate spans. They use the same public contracts and UTF-8
+validation. These literal sets do not track changes in Unicode letter categories.
+Only `\s` membership uses the pinned reference whitespace table.
+
+| Pattern | Body | Optional prefix |
+| --- | --- | --- |
+| P11 | One CR or LF; CRLF produces two matches | None |
+| P21 | U+3040–30FF and U+4E00–9FA5, one maximal union run | None |
+| P17 | U+0800–9FA5 and U+AC00–D7FF, including U+2003 | None |
+| P18 | The exact punctuation/alphabet ranges in its manifest, including ASCII letters and U+3000 | One Unicode whitespace scalar |
+| P08 | The exact extended alphabet ranges in its manifest, including supplementary-plane ranges | One Unicode whitespace scalar |
+| P23 | Complement of whitespace, `(`, `)`, `|`, and `.,!?…。，、।۔،` | One ASCII space |
+
+P23 follows the pinned Oniguruma nested-class interpretation. `[abc]` is one
+match; `(abc)` matches only `abc`; hyphen, colon and semicolon are allowed.
+P18's U+3000 belongs to both prefix and body. A singleton still matches because
+its optional prefix can backtrack. The shared scanner consumes the maximal body
+run and optionally includes the immediately preceding prefix; this preserves the
+same endpoint even when the prefix belongs to the body. Two leading whitespace
+scalars outside the body cannot both be attached.
+
+The implementation stores sorted exact range unions and precomputes ASCII
+membership once when constructing immutable plans. It searches gaps directly.
+P11 can search bytes because UTF-8 continuation bytes cannot equal CR or LF.
+There is no runtime parser, regex fallback, normalization, or new public API.
+Each exact decoded expression and immutable source is in its
+`testdata/patterns/PXX/manifest.json`; the common benchmark gate generates HF
+matches and isolated splits live before timing.

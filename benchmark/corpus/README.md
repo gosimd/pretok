@@ -40,3 +40,5 @@ Case-word suffix diagnostics cover both ordered word branches, leading marks,
 scoped case folds, partial/repeated contractions, non-word suffix contexts, and
 long words near common boundary sizes. These inputs also belong to the shared
 synthetic pool and are verified for every selected pattern.
+
+The shared synthetic pool also covers P08/P11/P17/P18/P21/P23 literal-range endpoints and neighbors, supplementary-plane characters, U+3000 prefix/body overlap, CRLF, and P23 nested-class delimiters. These are input scenarios for every pattern; references are generated live.

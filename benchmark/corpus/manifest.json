@@ -91,9 +91,51 @@
       "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": true
+    },
+    "P11": {
+      "pattern": "[\r\n]",
+      "pattern_sha256": "5cada29124805d8e0454dc5b67225bbf87075cffd53418e9c56f674708220e2c",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P21": {
+      "pattern": "[一-龥぀-ゟ゠-ヿ]+",
+      "pattern_sha256": "b17444129c80d563051e7b293e0a93351a65cd7722d7008bcdeecadbf02d12b3",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P17": {
+      "pattern": "[一-龥ࠀ-一가-퟿]+",
+      "pattern_sha256": "a9e31f463e1bd653c3d89fb26abc9a610b23eb0447b1bfcac71c7949e72583e4",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P18": {
+      "pattern": "\\s?[!-/:-~！-／：-～‘-‟　-。]+",
+      "pattern_sha256": "ae6bc1cffa8363b9fcbc8425375b51beb4782b93c6bcc35129ad95e41974f239",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P08": {
+      "pattern": "\\s?[A-Za-zµÀ-ÖØ-öø-ƺƼ-ƿǄ-ʓʕ-ʯͰ-ͳͶͷͻ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-ՖႠ-ჅᎠ-Ᏽᏸ-ᏽᲐ-ᲺᲽ-Ჿᴀ-ᴫᵫ-ᵷᵹ-ᶚḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℴℹℼ-ℿⅅ-ⅉⅎↃↄⰀ-ⱻⱾ-ⳤⳫ-ⳮⳲⳳꙀ-ꙭꚀ-ꚛꜢ-ꝯꝱ-ꞇꞋ-ꞎꭰ-ꮿﬀ-ﬆﬓ-ﬗＡ-Ｚａ-ｚ𐐀-𐑏𐒰-𐓓𐓘-𐓻𐲀-𐲲𐳀-𐳲𑢠-𑣟𞤀-𞥃]+",
+      "pattern_sha256": "38fd0b5eb7e66ecf05e5e89dd0272208b64a6d60fa009c4ea1be70e7b7e739d5",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P23": {
+      "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
+      "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
     }
   },
-  "generator_sha256": "954e8a17c90242e6f9e30949b4583c990bc479e112bcf6ef1693a2dad4082aa9",
+  "generator_sha256": "b703374eef65b5acabcfa3077262823d5c96d811dd1ef1025d94223ffb242161",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -291,18 +333,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "3ea5af900ba233e0575d22526fdcc02d49d46128315c536a372c9f953962ec9d",
-      "compressed_sha256": "1f4fa75b08ab1353e7eaf8c5ccc0ac1d47a1c159a4101da32ee2c9c12434f14e",
-      "bytes": 2134951,
-      "scalars": 1143269,
-      "ascii_fraction": 0.2541557159859875,
+      "sha256": "d8565712ffb89ff78f1e6dd96e54d4941cceccb40240c8cc7e2dd35da5edf517",
+      "compressed_sha256": "174353672bf9205d1c896bc2d96a3e3ff59b7915e0882b4fb487231b39c3a90e",
+      "bytes": 2287862,
+      "scalars": 1246316,
+      "ascii_fraction": 0.27114834723423004,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "4e46e7bf930fcccb0c898f557700be22fd8c70d4b0e3cd55de1ff06fb381128e",
-          "requests": 46496
+          "sha256": "3cc9cf625dcacbd036fc78e43d4253e432c031308c5b002d3f02e21a60f4cb53",
+          "requests": 72871
         }
       ]
     }

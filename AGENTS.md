@@ -10,7 +10,8 @@ an ordered case-word plan. Plans share cursor/gap handling and common
 constructions. P09/P13 are independently validated exact aliases of the P05 plan.
 P16/P07 use shared numeric runs; P24/P20 parameterize the Qwen number bound.
 P19/P06 reuse ordered case words with optional contraction suffixes.
-The other 12 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
+P08/P11/P17/P18/P21/P23 use exact literal sets and a shared scalar run search.
+The other 6 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
 Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary

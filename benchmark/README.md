@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P07, P09, P13, P16, P19, P20, and P24 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01–P09, P11, P13, P16–P21, P23, and P24 regexes. It contains five approximately
 1 MiB natural text pools and a separate synthetic diagnostic pool. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -128,7 +128,7 @@ The default pattern is P05. Each invocation measures one pattern and records its
 ID in raw samples and environment metadata.
 
 Defaults are 10 samples, at least 500 ms each, all 21 corpus/size batches, eight
-scan engine/mode rows (seven for P02/P03/P07/P16) and three compilation rows. Expect roughly 15 minutes plus
+scan engine/mode rows (seven for P02/P03/P07/P08/P11/P16/P17/P18/P21/P23) and three compilation rows. Expect roughly 15 minutes plus
 correctness gates and warm-up. Engines execute sequentially, with reversed order
 on alternate rounds. All raw samples and environment hashes are retained. Existing
 output directories are never overwritten; choose a new `-output` for each run.
@@ -177,15 +177,15 @@ No corpus reference arrays are stored, loaded, or decompressed. Native reference
 construction, JSON transport, comparison, and reference disposal are outside the
 scan timer. Both runners refuse to measure batches that have not passed their
 reference gate. `matches` and `split` are separate oracle outputs and counters.
-The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P16 omit
+The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P08/P11/P16/P17/P18/P21/P23 omit
 `onig-at`: its gaps require a search operation. Iterator rows count matches;
-Split rows count matches plus gaps, so P02/P03/P07/P16 output counts can differ.
+Split rows count matches plus gaps, so P02/P03/P07/P08/P11/P16/P17/P18/P21/P23 output counts can differ.
 
 Small regression fixtures under `testdata/` remain independent of the mass-corpus
 pipeline: they support offline Go tests and guard the pinned Unicode/reference
 profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
-recorded in each run. P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24 reuse the P05 fixtures only to guard the native build,
-with their P05 expression. Their own HF references are generated live; no P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24
+recorded in each run. P02–P04/P06–P09/P11/P13/P16–P21/P23/P24 reuse the P05 fixtures only to guard the native build,
+with their P05 expression. Their own HF references are generated live; no P02–P04/P06–P09/P11/P13/P16–P21/P23/P24
 fixture archives are required.
 
 ## Rebuild corpus inputs
@@ -208,7 +208,7 @@ To rebuild request ranges and manifests from existing pools without network acce
 
 Preparation records source, input, and generator hashes. It does not execute a
 regex engine or generate expected output. The native build still has to pass the
-native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24), so a crate
+native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02–P04/P06–P09/P11/P13/P16–P21/P23/P24), so a crate
 version alone is insufficient to establish Unicode compatibility.
 
 Source text uses deterministic gzip files; request ranges use plain JSON. Natural corpora are
@@ -222,3 +222,45 @@ corpus/size. The runner's `-pattern` selects the regex used to generate live
 references; it does not select different input files. Add diagnostic scenarios to
 this shared corpus so every pattern receives the same workloads. See the
 [corpus format](corpus/README.md).
+
+## Exact-set patterns: completed Apple M5 measurements
+
+P11, P21, P17, P18, P08 and P23 each have a complete scalar run: 1,500 samples,
+ten repetitions of at least 500 ms, all 21 shared batches. Go 1.27.0,
+Rust 1.90.0, HF Tokenizers 0.22.2, onig crate 6.5.1; one worker, public UTF-8
+validation included. The binaries, source and corpus fingerprints match across
+these six runs. These are regex boundary measurements, not full BPE tokenization.
+
+Reused `Split` throughput in decimal MB/s, natural-language requests of 4 KiB:
+
+| Language | P11 | P21 | P17 | P18 | P08 | P23 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| English | 2414.0 | 438.5 | 472.5 | 300.8 | 296.0 | 308.3 |
+| Russian | 617.2 | 266.1 | 261.1 | 205.7 | 230.5 | 203.7 |
+| Japanese | 1251.4 | 347.9 | 498.4 | 318.8 | 286.2 | 313.5 |
+| Arabic | 578.4 | 253.4 | 254.3 | 199.3 | 172.5 | 197.0 |
+| Chinese | 1273.2 | 433.3 | 462.4 | 301.9 | 278.9 | 306.0 |
+
+Ratios below divide the sum of five language batch medians by the corresponding
+sum for pretok on 4 KiB requests. They compare equivalent materialized outputs;
+separate columns keep the regex-engine and HF-stage comparisons distinct.
+
+| Report | Oniguruma reused / pretok reused | HF Split / pretok reused | Minimum Oniguruma ratio across all 21 workloads |
+| --- | ---: | ---: | ---: |
+| [P11](results/P11/2026-09-10-apple-m5-scalar/REPORT.md) | 2.12× | 4.87× | 1.46× |
+| [P21](results/P21/2026-09-10-apple-m5-scalar/REPORT.md) | 1.93× | 3.40× | 1.34× |
+| [P17](results/P17/2026-09-10-apple-m5-scalar/REPORT.md) | 1.92× | 3.23× | 1.35× |
+| [P18](results/P18/2026-09-10-apple-m5-scalar/REPORT.md) | 2.81× | 4.84× | 1.81× |
+| [P08](results/P08/2026-09-10-apple-m5-scalar/REPORT.md) | 2.50× | 4.20× | 1.60× |
+| [P23](results/P23/2026-09-10-apple-m5-scalar/REPORT.md) | 2.74× | 5.37× | 1.52× |
+
+No measured workload regresses against its corresponding Oniguruma mode: this
+holds separately for Cursor/iterator, reused Split, and fresh Split. Cursor and
+reused Split report zero bytes and zero allocations. Fresh allocations, ns/request,
+IQR, compile time and every language/size are in the linked reports. Native
+allocation counters remain unavailable. No SIMD backend is involved.
+
+All six patterns may leave unmatched gaps; match-at-offset is therefore omitted.
+They reuse one exact-set run search with prefix parameters; P11 searches single
+CR/LF bytes. Shared inputs have grown to 94,775 requests with exact-range and
+prefix-overlap diagnostics. Expected outputs are generated live, not stored.

@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P11",
+  "pattern": "[\r\n]",
+  "pattern_sha256": "5cada29124805d8e0454dc5b67225bbf87075cffd53418e9c56f674708220e2c",
+  "source": {
+    "model_id": "deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+    "revision": "e434a23f91ba5b4923cf6c9d9a238eb4a08e3a11",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct/blob/e434a23f91ba5b4923cf6c9d9a238eb4a08e3a11/tokenizer.json",
+    "sha256": "091b9dadb9845f0e8386c38bdb87e98db8adc7b0aacf36cb9257c00d0a668714",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

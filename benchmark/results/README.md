@@ -24,23 +24,28 @@ sharing one scanner plan need separately validated measurements.
 | P05 (Qwen letter-only words, single Unicode numbers) | Scalar | Apple M5 | [2026-09-09](P05/2026-09-09-apple-m5-scalar/REPORT.md) |
 | P09 (P05 with literal CR/LF) | Scalar, P05 plan | Apple M5 | [2026-09-10](P09/2026-09-10-apple-m5-scalar/REPORT.md) |
 | P13 (possessive spelling, P05-equivalent boundaries) | Scalar, P05 plan | Apple M5 | [2026-09-10](P13/2026-09-10-apple-m5-scalar/REPORT.md) |
-
 | P16 (one ASCII digit) | Scalar | Apple M5 | [2026-09-10](P16/2026-09-10-apple-m5-scalar/REPORT.md) |
 | P07 (1–3 Unicode N scalars) | Scalar | Apple M5 | [2026-09-10](P07/2026-09-10-apple-m5-scalar/REPORT.md) |
 | P24 (Qwen with N{1,3}) | Scalar | Apple M5 | [2026-09-10](P24/2026-09-10-apple-m5-scalar/REPORT.md) |
 | P20 (Qwen with N+) | Scalar | Apple M5 | [2026-09-10](P20/2026-09-10-apple-m5-scalar/REPORT.md) |
-
 | P19 (optional word contractions, single N) | Scalar, shared case-word plan | Apple M5 | [2026-09-10](P19/2026-09-10-apple-m5-scalar/REPORT.md) |
 | P06 (optional word contractions, N{1,3}) | Scalar, shared case-word plan | Apple M5 | [2026-09-10](P06/2026-09-10-apple-m5-scalar/REPORT.md) |
+
+| P11 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P11/2026-09-10-apple-m5-scalar/REPORT.md) |
+| P21 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P21/2026-09-10-apple-m5-scalar/REPORT.md) |
+| P17 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P17/2026-09-10-apple-m5-scalar/REPORT.md) |
+| P18 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P18/2026-09-10-apple-m5-scalar/REPORT.md) |
+| P08 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P08/2026-09-10-apple-m5-scalar/REPORT.md) |
+| P23 | Scalar, shared exact-set search | Apple M5 | [2026-09-10](P23/2026-09-10-apple-m5-scalar/REPORT.md) |
 
 Each full P01/P05/P09/P13/P24/P20/P19/P06 run contains 1,710 samples: ten samples of at least 500 ms per measurement,
 using Go 1.27.0, Rust 1.90.0, HF Tokenizers 0.22.2, and onig 6.5.1. Its original
 environment and raw samples are preserved without rewriting historical metadata.
-P16/P07 runs contain 1,500 samples each: the match-at diagnostic is excluded
+P16/P07/P08/P11/P17/P18/P21/P23 runs contain 1,500 samples each: the match-at diagnostic is excluded
 because these patterns can leave gaps. Their Cursor and Split outputs are
 verified independently before timing.
 
-P02/P03/P04 are also implemented; the other 12 regex strings remain unsupported.
+P02/P03/P04 are also implemented; the other 6 regex strings remain unsupported.
 P02/P03/P04 have no published full performance runs yet.
 
 The [P05 refactor regression check](P05/2026-09-10-apple-m5-scalar-regression/REPORT.md)
@@ -57,7 +62,7 @@ store only inputs and their profiles in the common corpus manifest. Generate
 oracle spans in memory during the correctness stage of each run. Keep results per
 pattern, language, size, engine, and backend. Cross-pattern comparisons also need
 matching corpus hashes and reference/split settings. The current runner and oracle
-generator support P01–P07, P09, P13, P16, P19, P20, and P24. Corpus preparation refreshes shared inputs; `-pattern`
+generator support P01–P09, P11, P13, P16–P21, P23, and P24. Corpus preparation refreshes shared inputs; `-pattern`
 selects one profile for live reference generation and measurement.
 
 The original P01/P05 September 9–10 full runs predate corpus schema 2. Their original
@@ -80,3 +85,10 @@ The P19/P06 runs share identical source, binary and corpus fingerprints. Their
 common corpus adds case-word suffix scenarios to the synthetic pool and contains
 68,400 requests across all batches. Historical runs retain their original corpus hashes
 and metadata.
+
+The P11/P21/P17/P18/P08/P23 runs share identical source, Go/native binaries and
+corpus fingerprints. Each contains 1,500 samples; together they contain 9,000.
+The shared corpus contains 94,775 requests over 21 batches, including literal-set
+boundaries, prefix overlap and nested-class diagnostics. All 19 supported patterns
+passed exact live HF/Oniguruma comparisons on these inputs. Historical reports
+retain their original corpus and source fingerprints.

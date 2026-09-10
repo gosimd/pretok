@@ -177,7 +177,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 	count := 0
 	for _, row := range rows {
 		re, err := pretok.Compile(row.Pattern)
-		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords || row.Pattern == patternLineEnd || row.Pattern == patternLiteralNewlines || row.Pattern == patternPossessive || row.Pattern == patternDigit || row.Pattern == patternNumberTriples || row.Pattern == patternQwenTriples || row.Pattern == patternQwenRuns || row.Pattern == patternCaseWordsSuffix || row.Pattern == patternCaseWordsSuffixTriples {
+		if setReferences[row.Pattern] != nil || row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords || row.Pattern == patternLineEnd || row.Pattern == patternLiteralNewlines || row.Pattern == patternPossessive || row.Pattern == patternDigit || row.Pattern == patternNumberTriples || row.Pattern == patternQwenTriples || row.Pattern == patternQwenRuns || row.Pattern == patternCaseWordsSuffix || row.Pattern == patternCaseWordsSuffixTriples {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
@@ -186,7 +186,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 13 {
+	if count != 19 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
 	for _, p := range []string{"", "[", ".*", "(?:" + patternLiteralNewlines + ")", patternLiteralNewlines + " ", "(?:" + patternPossessive + ")", patternPossessive + " ", strings.Replace(patternPossessive, `\p{N}|`, `\p{N}+|`, 1), `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, `\s+\z`, `(?m:\s+$)`, `\s*$`, `\s+$ `, "(?:" + patternCaseWords + ")", patternCaseWords + " ", strings.Replace(patternCaseWords, `[\r\n/]*`, `[\r\n]*`, 1), "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
@@ -197,7 +197,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23} {
 		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
@@ -247,6 +247,9 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 	if pattern == patternLineEnd {
 		input = "a \nX \nY"
 	}
+	if setReferences[pattern] != nil {
+		input = "A中\r\nA中"
+	}
 	c, _ := re.Cursor(input)
 	c.Next()
 	copy := c
@@ -260,6 +263,12 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 	if pattern == patternTriples || pattern == patternLineEnd || pattern == patternDigit || pattern == patternNumberTriples {
 		want = nil
 	}
+	if ref := setReferences[pattern]; ref != nil {
+		want = nil
+		for _, m := range ref.FindAllStringIndex(piece, -1) {
+			want = append(want, pretok.Span{Start: m[0], End: m[1]})
+		}
+	}
 	if !slices.Equal(collect(t, re, piece), want) {
 		t.Fatal("offsets not relative to subject")
 	}
@@ -267,7 +276,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23} {
 		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
 	}
 }
@@ -328,7 +337,9 @@ func fuzzPartition(f *testing.F, pattern string) {
 		}
 		assertPartition(t, src, got)
 		// Partial numeric patterns need gap checks; Qwen variants also check grouping.
-		if pattern == patternDigit {
+		if ref := setReferences[pattern]; ref != nil {
+			assertReference(t, re, src, ref)
+		} else if pattern == patternDigit {
 			assertReference(t, re, src, p16Reference)
 		} else if pattern == patternNumberTriples {
 			assertReference(t, re, src, p07Reference)

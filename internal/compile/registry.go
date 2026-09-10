@@ -60,7 +60,56 @@ var unicodeTriples = scan.UnicodeNumbers(1, 3)
 var qwenNumberTriples = scan.QwenNumbers(3)
 var qwenNumberRuns = scan.QwenNumbers(-1)
 
+// NewlinePattern is the exact decoded corpus P11 string.
+const NewlinePattern = "[\r\n]"
+
+var newline = scan.Newline()
+
+// CJKPattern is the exact decoded corpus P21 string.
+const CJKPattern = `[一-龥぀-ゟ゠-ヿ]+`
+
+var cjk = scan.CJK()
+
+// BroadRangesPattern is the exact decoded corpus P17 string.
+const BroadRangesPattern = `[一-龥ࠀ-一가-퟿]+`
+
+var broadRanges = scan.BroadRanges()
+
+// PrefixedSymbolsPattern is the exact decoded corpus P18 string.
+const PrefixedSymbolsPattern = `\s?[!-/:-~！-／：-～‘-‟　-。]+`
+
+var prefixedSymbols = scan.PrefixedSymbols()
+
+// PrefixedAlphabetPattern is the exact decoded corpus P08 string.
+const PrefixedAlphabetPattern = `\s?[A-Za-zµÀ-ÖØ-öø-ƺƼ-ƿǄ-ʓʕ-ʯͰ-ͳͶͷͻ-ͽͿΆΈ-ΊΌΎ-ΡΣ-ϵϷ-ҁҊ-ԯԱ-ՖႠ-ჅᎠ-Ᏽᏸ-ᏽᲐ-ᲺᲽ-Ჿᴀ-ᴫᵫ-ᵷᵹ-ᶚḀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼιῂ-ῄῆ-ῌῐ-ΐῖ-Ίῠ-Ῥῲ-ῴῶ-ῼℂℇℊ-ℓℕℙ-ℝℤΩℨK-ℭℯ-ℴℹℼ-ℿⅅ-ⅉⅎↃↄⰀ-ⱻⱾ-ⳤⳫ-ⳮⳲⳳꙀ-ꙭꚀ-ꚛꜢ-ꝯꝱ-ꞇꞋ-ꞎꭰ-ꮿﬀ-ﬆﬓ-ﬗＡ-Ｚａ-ｚ𐐀-𐑏𐒰-𐓓𐓘-𐓻𐲀-𐲲𐳀-𐳲𑢠-𑣟𞤀-𞥃]+`
+
+var prefixedAlphabet = scan.PrefixedAlphabet()
+
+// ComplementPattern is the exact decoded corpus P23 string.
+const ComplementPattern = ` ?[^(\s|[.,!?…。，、।۔،])]+`
+
+var complement = scan.Complement()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == NewlinePattern {
+		return &newline, true
+	}
+	if pattern == CJKPattern {
+		return &cjk, true
+	}
+	if pattern == BroadRangesPattern {
+		return &broadRanges, true
+	}
+	if pattern == PrefixedSymbolsPattern {
+		return &prefixedSymbols, true
+	}
+	if pattern == PrefixedAlphabetPattern {
+		return &prefixedAlphabet, true
+	}
+	if pattern == ComplementPattern {
+		return &complement, true
+	}
+
 	if pattern == CaseWordsSuffixPattern {
 		return &caseWordsSuffix, true
 	}

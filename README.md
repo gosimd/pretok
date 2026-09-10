@@ -6,7 +6,7 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for thirteen exact regex strings: P05 (Qwen
+**Status:** scalar implementation for nineteen exact regex strings: P05 (Qwen
 letter-only words), P01 (letters and marks), P02 (exactly three ASCII digits),
 P03 (whitespace ending at a line boundary or EOF), and P04 (ordered words with case-sensitive Unicode classes), plus P09/P13 as
 exact aliases of P05. P16 matches one ASCII digit; P07 matches 1–3 Unicode N
@@ -16,7 +16,8 @@ one Unicode number or groups of 1–3 respectively.
 P01/P05 share one parameterized scanner template; P02 reuses the public cursor
 and gap handling. P04 shares the number/symbol/whitespace tail and uses
 a dedicated word scanner with pinned Unicode classes. `Compile`, `Cursor`, and
-`Split` are checked against pinned Hugging Face references. The other 12 corpus
+`Split` are checked against pinned Hugging Face references.
+P08/P11/P17/P18/P21/P23 use exact literal sets and a shared run search. The other 6 corpus
 strings remain unsupported. No SIMD backend is implemented.
 
 ## Scope
@@ -254,3 +255,14 @@ corpus, and comparison baseline, and include regressions.
 ## License
 
 [MIT](LICENSE).
+
+The exact-set family now has full scalar benchmark reports for
+[P11](benchmark/results/P11/2026-09-10-apple-m5-scalar/REPORT.md),
+[P21](benchmark/results/P21/2026-09-10-apple-m5-scalar/REPORT.md),
+[P17](benchmark/results/P17/2026-09-10-apple-m5-scalar/REPORT.md),
+[P18](benchmark/results/P18/2026-09-10-apple-m5-scalar/REPORT.md),
+[P08](benchmark/results/P08/2026-09-10-apple-m5-scalar/REPORT.md),
+[P23](benchmark/results/P23/2026-09-10-apple-m5-scalar/REPORT.md).
+See the [benchmark summary](benchmark/README.md#exact-set-patterns-completed-apple-m5-measurements)
+for per-language throughput and separate Oniguruma/HF ratios. These six runs
+contain 9,000 measurements with the same source, binaries and shared corpus.

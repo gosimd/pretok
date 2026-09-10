@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P23",
+  "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
+  "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
+  "source": {
+    "model_id": "bigscience/bigscience-small-testing",
+    "revision": "07cec32ba73113d4138131eff2c9516c773eba62",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/bigscience/bigscience-small-testing/blob/07cec32ba73113d4138131eff2c9516c773eba62/tokenizer.json",
+    "sha256": "3fa39cd4b1500feb205bcce3b9703a4373414cafe4970e0657b413f7ddd2a9d3",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

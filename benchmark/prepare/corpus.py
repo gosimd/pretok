@@ -111,7 +111,7 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06'),('P11','testdata/patterns/P11'),('P21','testdata/patterns/P21'),('P17','testdata/patterns/P17'),('P18','testdata/patterns/P18'),('P08','testdata/patterns/P08'),('P23','testdata/patterns/P23')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
@@ -202,6 +202,20 @@ def main():
             for suffix in suffixes:
                 suffix_inputs.add(word*n+suffix+'ABC')
     for text in sorted(suffix_inputs):
+        start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
+    # Exact literal-set boundaries and optional-prefix overlap, shared inputs.
+    set_inputs=set()
+    for lo,hi in re.findall(r'\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}',(ROOT/'internal/scan/exact_ranges.go').read_text()):
+        for c in [int(lo,16)-1,int(lo,16),int(hi,16),int(hi,16)+1]:
+            if 0<=c<0x110000 and not 0xD800<=c<=0xDFFF:
+                ch=chr(c)
+                for prefix in ['', ' ', '\t', '\u3000', '\u2003\u2003']:
+                    set_inputs.update([prefix+ch,prefix+ch*3+'A中',ch+' '+ch])
+    for n in range(1,5):
+        set_inputs.update(''.join(chars) for chars in itertools.product(['\u3000',' ', 'A','1','中','(',')','|','[',']','\r','\n'],repeat=n))
+    set_inputs.update(chr(c)+'X'+chr(c) for c in range(128))
+    set_inputs.update(['[abc] (abc) a|b .,!?:;_', '.,!?…。，、।۔،', '\r\n'])
+    for text in sorted(set_inputs):
         start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:
