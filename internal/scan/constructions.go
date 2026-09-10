@@ -67,7 +67,7 @@ func (p prefixedLetters) match(src string, pos int) int {
 	return end
 }
 
-// singleNumber matches one Unicode N scalar, including Nd, Nl, and No.
+// singleNumber is the shared fast path for one Unicode N scalar.
 type singleNumber struct{}
 
 func (singleNumber) match(src string, pos int) int {
@@ -76,6 +76,72 @@ func (singleNumber) match(src string, pos int) int {
 		return pos + size
 	}
 	return pos
+}
+
+// numberRun consumes greedy scalar counts, not bytes. max == -1 is unbounded.
+// All registered plans require a positive min; failed partial runs consume nothing.
+// ASCII and Unicode N are distinct classes; N includes Nd, Nl and No.
+type numberRun struct {
+	ascii    bool
+	min, max int
+}
+
+// find skips unmatched input without re-decoding it in the generic cursor.
+// In valid UTF-8 an ASCII digit cannot occur inside a multibyte encoding, so
+// ASCII search may inspect bytes; returned positions remain scalar boundaries.
+func (p numberRun) find(src string, pos int) (int, int) {
+	if p.ascii {
+		for pos < len(src) {
+			if asciiDigit(src[pos]) {
+				if end := p.matchASCII(src, pos); end > pos {
+					return pos, end
+				}
+			}
+			pos++
+		}
+	} else {
+		for pos < len(src) {
+			r, width := runeAt(src, pos)
+			if number(r) {
+				end := pos + width
+				if p.max != 1 {
+					end = p.rest(src, pos, end)
+				}
+				if end > pos {
+					return pos, end
+				}
+			}
+			pos += width
+		}
+	}
+	return len(src), len(src)
+}
+
+func (p numberRun) matchASCII(src string, pos int) int {
+	end := pos
+	for end < len(src) && (p.max < 0 || end-pos < p.max) && asciiDigit(src[end]) {
+		end++
+	}
+	if end-pos < p.min {
+		return pos
+	}
+	return end
+}
+
+func (p numberRun) rest(src string, start, end int) int {
+	count := 1
+	for end < len(src) && (p.max < 0 || count < p.max) {
+		r, size := runeAt(src, end)
+		if !number(r) {
+			break
+		}
+		end += size
+		count++
+	}
+	if count < p.min {
+		return start
+	}
+	return end
 }
 
 // symbolRun implements an optional ASCII space, a non-empty run outside

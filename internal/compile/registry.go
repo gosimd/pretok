@@ -17,6 +17,18 @@ const QwenLiteralNewlinesPattern = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p
 // QwenPossessivePattern (P13) shares P05 boundaries under the pinned profile.
 const QwenPossessivePattern = `'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+`
 
+// ASCIIDigitPattern is the exact corpus P16 string.
+const ASCIIDigitPattern = `[0-9]`
+
+// UnicodeTriplesPattern is the exact corpus P07 string.
+const UnicodeTriplesPattern = `\p{N}{1,3}`
+
+// QwenNumberTriplesPattern is the exact corpus P24 string.
+const QwenNumberTriplesPattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+
+// QwenNumberRunsPattern is the exact corpus P20 string.
+const QwenNumberRunsPattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}+| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+
 var qwen = scan.Qwen()
 var qwenMarks = scan.QwenMarks()
 
@@ -35,7 +47,25 @@ const LineEndWhitespacePattern = `\s+$`
 
 var lineEndWhitespace = scan.LineEndWhitespace()
 
+var asciiDigit = scan.ASCIINumbers(1, 1)
+var unicodeTriples = scan.UnicodeNumbers(1, 3)
+var qwenNumberTriples = scan.QwenNumbers(3)
+var qwenNumberRuns = scan.QwenNumbers(-1)
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == ASCIIDigitPattern {
+		return &asciiDigit, true
+	}
+	if pattern == UnicodeTriplesPattern {
+		return &unicodeTriples, true
+	}
+	if pattern == QwenNumberTriplesPattern {
+		return &qwenNumberTriples, true
+	}
+	if pattern == QwenNumberRunsPattern {
+		return &qwenNumberRuns, true
+	}
+
 	if pattern == LineEndWhitespacePattern {
 		return &lineEndWhitespace, true
 	}

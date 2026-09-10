@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P07",
+  "pattern": "\\p{N}{1,3}",
+  "pattern_sha256": "37eeaf14e325fd50c91d4af3b63ab2b18738486e4ad64c66d0b5777032e9e9a9",
+  "source": {
+    "model_id": "baidu/Unlimited-OCR",
+    "revision": "07dea832e22aefee32ad281d4b80551282e1c168",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/baidu/Unlimited-OCR/blob/07dea832e22aefee32ad281d4b80551282e1c168/tokenizer.json",
+    "sha256": "a02f8fd5228c90256bb4f6554c34a579d48f909e5beb232dc4afad870b55a8b4",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

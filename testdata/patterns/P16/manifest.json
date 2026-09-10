@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P16",
+  "pattern": "[0-9]",
+  "pattern_sha256": "9337e51f5676d43f17c1d4b76471919349df9126af352540bad24f99a535c744",
+  "source": {
+    "model_id": "tiiuae/Falcon-H1-0.5B-Base",
+    "revision": "59fb76e8c5d3fc7441b062be638e1ba0afd5c687",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/tiiuae/Falcon-H1-0.5B-Base/blob/59fb76e8c5d3fc7441b062be638e1ba0afd5c687/tokenizer.json",
+    "sha256": "605c664925653e3fbf2f35ea063847db441ba5b7a6af04378880409c3ab311fc",
+    "json_pointer": "/pre_tokenizer/pretokenizers/3/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

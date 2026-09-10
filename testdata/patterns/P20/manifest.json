@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P20",
+  "pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}+| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "b0978c39ffab1abadec9815736da8fdb682430bc9c1ad92f924e2ba34ba7a5f1",
+  "source": {
+    "model_id": "openbmb/MiniCPM5-1B",
+    "revision": "87179e5c1f455ef22e6223592d2d61351b525bfc",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/openbmb/MiniCPM5-1B/blob/87179e5c1f455ef22e6223592d2d61351b525bfc/tokenizer.json",
+    "sha256": "3e065a558a034185fe299917b398685c1facd0169a9eea1e629eb30c171fed81",
+    "json_pointer": "/pre_tokenizer/pretokenizers/1/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

@@ -25,18 +25,26 @@ func LineEndWhitespace() Plan { return Plan{find: lineEndWhitespace{}.find} }
 // Qwen builds the P05 plan. The template fixes alternative order; components
 // implement only the constructions used by this exact expression.
 func Qwen() Plan {
-	return qwen(false)
+	return qwen(false, 1)
 }
 
 // QwenMarks builds P01 with marks in words and excluded from symbol runs.
-func QwenMarks() Plan { return qwen(true) }
+func QwenMarks() Plan { return qwen(true, 1) }
 
-func qwen(includeMarks bool) Plan {
+// QwenNumbers varies only the Unicode-number bound: 3 for P24, -1 for P20.
+func QwenNumbers(max int) Plan { return qwen(false, max) }
+
+func ASCIINumbers(min, max int) Plan {
+	return Plan{find: numberRun{ascii: true, min: min, max: max}.find}
+}
+func UnicodeNumbers(min, max int) Plan { return Plan{find: numberRun{min: min, max: max}.find} }
+
+func qwen(includeMarks bool, max int) Plan {
 	class := &letters
 	if includeMarks {
 		class = &lettersAndMarks
 	}
-	p := qwenPlan{words: prefixedLetters{class: class}, tail: wordTail{symbols: symbolRun{class: class}}}
+	p := qwenPlan{words: prefixedLetters{class: class}, tail: wordTail{numberMax: max, symbols: symbolRun{class: class}}}
 	return Plan{match: p.match}
 }
 
@@ -48,7 +56,7 @@ type qwenPlan struct {
 
 // wordTail preserves the common ordered number, symbol and whitespace branches.
 type wordTail struct {
-	numbers    singleNumber
+	numberMax  int
 	symbols    symbolRun
 	whitespace whitespaceRun
 }
@@ -64,7 +72,10 @@ func (p qwenPlan) match(src string, pos int) int {
 }
 
 func (p wordTail) match(src string, pos int) int {
-	if end := p.numbers.match(src, pos); end > pos {
+	if end := (singleNumber{}).match(src, pos); end > pos {
+		if p.numberMax != 1 {
+			return (numberRun{min: 1, max: p.numberMax}).rest(src, pos, end)
+		}
 		return end
 	}
 	if end := p.symbols.match(src, pos); end > pos {
@@ -75,7 +86,7 @@ func (p wordTail) match(src string, pos int) int {
 
 // CaseWords builds P04, with no contraction branch or attached suffix.
 func CaseWords() Plan {
-	p := caseWordPlan{tail: wordTail{symbols: symbolRun{class: &letters, slashSuffix: true}}}
+	p := caseWordPlan{tail: wordTail{numberMax: 1, symbols: symbolRun{class: &letters, slashSuffix: true}}}
 	return Plan{match: p.match}
 }
 

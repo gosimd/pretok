@@ -29,3 +29,9 @@ not expected split outputs. `.txt.gz` files hold only input text. Plain `*-SIZE.
 Before timing, the pinned native HF runner generates matches and isolated split spans for these exact inputs in memory. Go and Oniguruma compare every boundary. The generated arrays are discarded after checking; only output counts and buffer capacity remain for measurement. Nothing is saved as corpus reference output.
 
 Run `python benchmark/prepare/corpus.py --offline` from the repository root to rebuild inputs and ranges using the pinned preparation dependencies. Add new scenarios to this common corpus; there are no per-pattern input or reference directories.
+
+Numeric diagnostics also cover 1/2/3/4/5/6/7-length boundaries, long runs,
+mixed Nd/Nl/No scalars, astral numbers, and neighbors of every pinned N range.
+These inputs are shared by all patterns. P16/P07 may leave unmatched gaps;
+P24/P20 cover the entire subject. No per-pattern corpus or expected-output
+archive is stored.

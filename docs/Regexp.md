@@ -4,10 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P05, P09, and P13.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P05, P07, P09, P13, P16, P20, and P24.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
 an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
-ordered case-word candidates. P09/P13 reuse the P05 plan. The other 18
+ordered case-word candidates. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. The other 14
 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
@@ -65,13 +65,13 @@ model's complete pre-tokenizer pipeline is not implemented by this library.
 The plan selects the L or L|M table at compilation time. The word and symbol
 scanners share that class, with one Unicode lookup and a common ASCII fast path.
 
-The [scalar plan](../internal/scan/plan.go) composes five private construction types:
+The [scalar plan](../internal/scan/plan.go) composes the following private construction types:
 
 | Component | Behavior |
 | --- | --- |
 | `contractionSet` | Standalone apostrophe contractions with pinned case folding |
 | `prefixedLetters` | Optional single non-CR/LF/L/N prefix followed by letters (P05) or letters/marks (P01) |
-| `singleNumber` | One Unicode N scalar, including Nd, Nl, and No |
+| `singleNumber` / `numberRun` | One Unicode N scalar or a greedy run with scalar-count bounds |
 | `symbolRun` | Optional ASCII space, symbols outside whitespace/L/N (also M for P01), CR/LF suffix |
 | `whitespaceRun` | One whitespace scan and an ordered decision for the last three alternatives |
 
@@ -102,6 +102,31 @@ The equivalent spelling `[0-9]{3}` is deliberately unregistered.
 [P02 source metadata](../testdata/patterns/P02/manifest.json) pins its occurrence
 in tiiuae/falcon-7b. Live HF references use Removed/invert=true for matches and
 Isolated/invert=false for splits; no new output archive is stored.
+
+Numeric variants:
+
+| Pattern | Exact expression or change from P05 | Selected matches |
+|---|---|---|
+| [P16](../testdata/patterns/P16/manifest.json) | `[0-9]` | One ASCII digit |
+| [P07](../testdata/patterns/P07/manifest.json) | `\p{N}{1,3}` | Greedy groups of 1–3 Unicode N scalars |
+| [P24](../testdata/patterns/P24/manifest.json) | Replace only P05's `\p{N}` branch with `\p{N}{1,3}` | Qwen boundaries with bounded numeric groups |
+| [P20](../testdata/patterns/P20/manifest.json) | Replace only P05's `\p{N}` branch with `\p{N}+` | Qwen boundaries with whole numeric runs |
+
+P16/P07 use a numeric search plan: ASCII byte search is safe after UTF-8
+validation, and Unicode search decodes each skipped scalar once. They leave unmatched gaps; `Cursor` skips them and `Split` preserves them.
+P24/P20 cover all valid input. The internal `numberRun` stores a numeric class and
+minimum/maximum scalar counts (`max == -1` means unbounded). ASCII `[0-9]`,
+Unicode `Nd`, and Unicode `N` are not interchangeable: the latter includes `Nd`,
+`Nl`, and `No`, so `１²Ⅳ١𐒠3` is two P07/P24 groups and one P20 group. P16
+matches only its final ASCII `3`. Bounds count scalars, while spans remain byte
+indices. Adjacent numbers from different scripts belong to the same run.
+
+Qwen variants share every non-numeric construction and preserve alternative order.
+Single-number plans retain their fast classifier; only longer numeric runs enter
+the continuation loop. P02 retains its fixed three-ASCII-byte specialization.
+Equivalent spellings such as `\d` or `[0-9]{1}` remain unsupported. Numeric
+source manifests contain provenance/settings only; HF outputs are regenerated
+in memory on the shared benchmark inputs before every full correctness gate.
 
 P03:
 
@@ -188,7 +213,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01–P05, P09, and P13 are implemented; the remaining strings are future
+unique strings. P01–P05, P07, P09, P13, P16, P20, and P24 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

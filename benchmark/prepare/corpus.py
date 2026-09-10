@@ -111,7 +111,7 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
@@ -120,7 +120,7 @@ def main():
         guard=json.loads((guard_dir/'manifest.json').read_text())
         patterns[ident]['fixture_pattern']=guard['pattern']
         patterns[ident]['fixture_sha256']=sha((guard_dir/'cases.jsonl.gz').read_bytes())
-        patterns[ident]['full_coverage']=ident in ('P01','P04','P05','P09','P13')
+        patterns[ident]['full_coverage']=ident in ('P01','P04','P05','P09','P13','P24','P20')
     manifest={'schema':3,'patterns':patterns,
               'generator_sha256':sha(Path(__file__).read_bytes()),
               'case_tables_sha256':sha((ROOT/'internal/scan/case_tables.go').read_bytes()),
@@ -177,6 +177,18 @@ def main():
             for suffix in ['X','\nX','\rX','\r\nX','\u2028X','']:
                 whitespace_inputs.add('a'+ch*n+suffix)
     for text in sorted(whitespace_inputs):
+        start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
+    number_inputs=set()
+    for n in [1,2,3,4,5,6,7,8,9,15,16,17,31,32,33,63,64,65,4096]:
+        for ch in ['0','１','²','Ⅳ','١','𐒠','1²Ⅳ𐒠']:
+            number_inputs.update([ch*n,'A'+ch*n+'B',' '+ch*n+'\r\nX',ch*n+'\u0301'+ch*n])
+    table=ROOT/'internal/scan/unicode_tables.go'
+    number_section=table.read_text().split('var numberRanges')[1].split('}\n')[0]
+    for lo,hi in re.findall(r'\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}',number_section):
+        for c in [int(lo,16)-1,int(lo,16),int(hi,16),int(hi,16)+1]:
+            if 0<=c<0x110000 and not 0xD800<=c<=0xDFFF:
+                number_inputs.add('1'+chr(c)*4+'²Ⅳ𐒠A')
+    for text in sorted(number_inputs):
         start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:
