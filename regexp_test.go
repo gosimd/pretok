@@ -18,6 +18,8 @@ import (
 	"github.com/gosimd/pretok"
 )
 
+const patternCaseWords = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+
 const patternTriples = `[0-9][0-9][0-9]`
 
 const patternMarks = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
@@ -162,7 +164,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 	count := 0
 	for _, row := range rows {
 		re, err := pretok.Compile(row.Pattern)
-		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples {
+		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
@@ -171,10 +173,10 @@ func TestSupportedCorpusStrings(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 3 {
+	if count != 4 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
-	for _, p := range []string{"", "[", ".*", `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
+	for _, p := range []string{"", "[", ".*", `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, "(?:" + patternCaseWords + ")", patternCaseWords + " ", strings.Replace(patternCaseWords, `[\r\n/]*`, `[\r\n]*`, 1), "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
 		if re, err := pretok.Compile(p); re != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
 			t.Fatalf("accepted unknown %q", p)
 		}
@@ -182,7 +184,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P05": pattern} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P04": patternCaseWords, "P05": pattern} {
 		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
@@ -248,7 +250,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P05": pattern} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P04": patternCaseWords, "P05": pattern} {
 		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
 	}
 }
@@ -277,6 +279,7 @@ func testConcurrentReuse(t *testing.T, re *pretok.Regexp) {
 	wg.Wait()
 }
 
+func FuzzP04Partition(f *testing.F)  { fuzzPartition(f, patternCaseWords) }
 func FuzzP02Partition(f *testing.F)  { fuzzPartition(f, patternTriples) }
 func FuzzP01Partition(f *testing.F)  { fuzzPartition(f, patternMarks) }
 func FuzzQwenPartition(f *testing.F) { fuzzPartition(f, pattern) }
@@ -297,7 +300,7 @@ func fuzzPartition(f *testing.F, pattern string) {
 			t.Fatal(err)
 		}
 		assertPartition(t, src, got)
-		// P01/P05 cover every scalar. P02 also needs independent gap checks.
+		// P01/P04/P05 cover every scalar. P02 also needs independent gap checks.
 		if pattern == patternTriples {
 			assertP02Reference(t, re, src)
 		} else if !slices.Equal(got, collect(t, re, src)) {
@@ -349,6 +352,8 @@ func BenchmarkQwenSplit(b *testing.B)      { benchmarkSplit(b, pattern, false) }
 func BenchmarkQwenSplitFresh(b *testing.B) { benchmarkSplit(b, pattern, true) }
 func BenchmarkP01Split(b *testing.B)       { benchmarkSplit(b, patternMarks, false) }
 func BenchmarkP02Split(b *testing.B)       { benchmarkSplit(b, patternTriples, false) }
+func BenchmarkP04Split(b *testing.B)       { benchmarkSplit(b, patternCaseWords, false) }
+func BenchmarkP04SplitFresh(b *testing.B)  { benchmarkSplit(b, patternCaseWords, true) }
 func BenchmarkP02SplitFresh(b *testing.B)  { benchmarkSplit(b, patternTriples, true) }
 func BenchmarkP01SplitFresh(b *testing.B)  { benchmarkSplit(b, patternMarks, true) }
 
@@ -474,6 +479,72 @@ func TestP02Gaps(t *testing.T) {
 				t.Fatal(err)
 			}
 			assertPartition(t, src, spans)
+		}
+	}
+}
+
+func TestP04Examples(t *testing.T) {
+	re := compiledPattern(t, patternCaseWords)
+	// Observed with the pinned HF Tokenizers 0.22.2 Isolated split.
+	for _, tc := range []struct {
+		text   string
+		pieces []string
+	}{
+		{"fooBar HTTPServer", []string{"foo", "Bar", " HTTPServer"}},
+		{"中AB", []string{"中", "AB"}},
+		{"AA中BB", []string{"AA中", "BB"}},
+		{"\u0301ABC", []string{"\u0301", "ABC"}},
+		{"\u0301\u0301ABC", []string{"\u0301\u0301", "ABC"}},
+		{"ABC\u0301DEF", []string{"ABC\u0301", "DEF"}},
+		{"ǅabcǅABC", []string{"ǅabc", "ǅABC"}},
+		{"we're I'LL", []string{"we", "'re", " I", "'LL"}},
+		{"!\r/\n", []string{"!\r/\n"}},
+		{"!!\u0301a", []string{"!!\u0301", "a"}},
+		{"\u0301", []string{"\u0301"}},
+		{"\u2028ABC", []string{"\u2028ABC"}},
+	} {
+		spans, err := re.Split(tc.text, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var pieces []string
+		for _, s := range spans {
+			pieces = append(pieces, tc.text[s.Start:s.End])
+		}
+		if !slices.Equal(pieces, tc.pieces) {
+			t.Errorf("%q: pieces %q want %q", tc.text, pieces, tc.pieces)
+		}
+		if !slices.Equal(spans, collect(t, re, tc.text)) {
+			t.Fatal("cursor/split differ")
+		}
+		assertPartition(t, tc.text, spans)
+	}
+}
+
+func TestP04TableProfile(t *testing.T) {
+	data, err := os.ReadFile("testdata/patterns/P04/manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m struct {
+		Pattern      string
+		TablesSHA    string `json:"tables_sha256"`
+		GeneratorSHA string `json:"generator_sha256"`
+	}
+	if err = json.Unmarshal(data, &m); err != nil {
+		t.Fatal(err)
+	}
+	if m.Pattern != patternCaseWords {
+		t.Fatal("P04 provenance pattern mismatch")
+	}
+	for path, want := range map[string]string{"internal/scan/case_tables.go": m.TablesSHA, "testdata/patterns/generate_case_tables.py": m.GeneratorSHA} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sum := sha256.Sum256(data)
+		if hex.EncodeToString(sum[:]) != want {
+			t.Fatalf("%s differs from pinned table profile", path)
 		}
 	}
 }

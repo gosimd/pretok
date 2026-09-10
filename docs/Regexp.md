@@ -4,9 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01, P02, and P05.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01, P02, P04, and P05.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
-an ASCII-triplet plan. The other 22 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
+an ASCII-triplet plan, and P04 uses ordered case-word candidates. The other 21
+strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
 ## Supported expressions
@@ -80,6 +81,33 @@ The equivalent spelling `[0-9]{3}` is deliberately unregistered.
 in tiiuae/falcon-7b. Live HF references use Removed/invert=true for matches and
 Isolated/invert=false for splits; no new output archive is stored.
 
+P04:
+
+```regex
+[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+
+```
+
+P04 orders two word alternatives: `prefix? A*B+`, then `prefix? A+B*`, where
+`A = Lu|Lt|Lm|Lo|M`, `B = Ll|Lm|Lo|M`, and the optional prefix excludes CR/LF/L/N.
+It has no contraction alternative or suffix; numbers are single Unicode N scalars.
+Its symbol body excludes whitespace/L/N (marks remain symbols), and its greedy
+suffix allows any mixture of CR, LF, and `/`.
+
+The [word scanner](../internal/scan/case_words.go) records the end of the A run,
+the last member also belonging to B, and the following B run. These observations
+produce both candidate endpoints without rescanning the word for each alternative.
+The first successful alternative wins, even if the second could consume more:
+`AA中BB` becomes `AA中` + `BB`. The optional prefix must backtrack within the first
+alternative before the second is tried: a leading combining mark followed by
+`ABC` becomes the mark + `ABC`. This is not ordinary camelCase splitting.
+
+The [P04 profile](../testdata/patterns/P04/manifest.json) pins its Nemotron source,
+HF wheel and generated class-table hashes. Classes come from the pinned HF oracle
+over every Unicode scalar; the runtime uses one class-mask lookup. Common
+number, symbol, whitespace, cursor and gap handling are reused. P04 covers all
+valid scalars, so matches and isolated splits coincide. References are generated
+in memory on the common benchmark corpus, with no P04 output archive.
+
 There is no normalization, ByteLevel mapping, or BPE processing here.
 
 ## API
@@ -107,7 +135,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01, P02, and P05 are implemented; the remaining strings are future
+unique strings. P01, P02, P04, and P05 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

@@ -6,11 +6,14 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for three exact regex strings: P05 (Qwen
-letter-only words), P01 (letters and marks), and P02 (exactly three ASCII digits).
+**Status:** scalar implementation for four exact regex strings: P05 (Qwen
+letter-only words), P01 (letters and marks), P02 (exactly three ASCII digits),
+and P04 (ordered words with case-sensitive Unicode classes).
 P01/P05 share one parameterized scanner template; P02 reuses the public cursor
-and gap handling. `Compile`, `Cursor`, and `Split` are checked against pinned
-Hugging Face references. The other 22 corpus strings remain unsupported. No SIMD backend is implemented.
+and gap handling. P04 shares the number/symbol/whitespace tail and uses
+a dedicated word scanner with pinned Unicode classes. `Compile`, `Cursor`, and
+`Split` are checked against pinned Hugging Face references. The other 21 corpus
+strings remain unsupported. No SIMD backend is implemented.
 
 ## Scope
 
@@ -154,7 +157,9 @@ The first [research survey](research/pretokenize_regex/README.md) collects expli
 It preserves surrounding split settings. Discovery alone does not establish
 support. The initial P05 implementation has
 its own [oracle fixtures](testdata/qwen/manifest.json); P01 has [separate fixtures](testdata/patterns/P01/manifest.json) and a [maintained regeneration script](testdata/patterns/README.md). P02 has [source metadata](testdata/patterns/P02/manifest.json); its references
-are generated in memory by the common benchmark pipeline. Full tokenizer
+are generated in memory by the common benchmark pipeline. P04 has
+[its own pinned source and class-table profile](testdata/patterns/P04/manifest.json)
+and also uses live references. Full tokenizer
 compatibility is outside this package.
 
 The [structural and semantic analysis](research/regex_analysis/ANALYSIS.md) groups
@@ -194,12 +199,15 @@ go test -race ./...
 go test -run '^$' -fuzz FuzzQwenPartition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP01Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP02Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP04Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzCaseWordCandidates -fuzztime 10s ./internal/scan
 ```
 
 The checked-in fixtures contain 7,738 P05 cases and 26,820 P01 cases. P02 uses
 small inline regressions, offline differential fuzzing against Go regexp, and
 live HF comparison on every common benchmark request; it adds no stored output
-archives. Unicode class membership and the
+archives. P04 adds inline HF cases, branch-candidate differential fuzzing, and
+live HF matches/splits on the common corpus. Unicode class membership and the
 contraction case folds are generated from every Unicode scalar using the pinned
 native oracle, rather than Go's evolving Unicode tables. These checks establish
 bounded differential evidence, not proof of all input combinations.

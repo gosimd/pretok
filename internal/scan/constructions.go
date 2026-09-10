@@ -81,7 +81,11 @@ func (singleNumber) match(src string, pos int) int {
 // symbolRun implements an optional ASCII space, a non-empty run outside
 // whitespace/N/word-class, and a greedy suffix of CR and LF. Apostrophes inside an
 // already-started symbol run do not restart the higher-priority contraction rule.
-type symbolRun struct{ class *wordClass }
+// P04 permits slash in the suffix as well.
+type symbolRun struct {
+	class       *wordClass
+	slashSuffix bool // P04 extends the CR/LF suffix to [\r\n/]*.
+}
 
 func (p symbolRun) match(src string, pos int) int {
 	end := pos
@@ -99,7 +103,7 @@ func (p symbolRun) match(src string, pos int) int {
 	if end == body {
 		return pos
 	}
-	for end < len(src) && (src[end] == '\r' || src[end] == '\n') {
+	for end < len(src) && (src[end] == '\r' || src[end] == '\n' || p.slashSuffix && src[end] == '/') {
 		end++
 	}
 	return end

@@ -28,16 +28,21 @@ func qwen(includeMarks bool) Plan {
 	if includeMarks {
 		class = &lettersAndMarks
 	}
-	p := qwenPlan{words: prefixedLetters{class: class}, symbols: symbolRun{class: class}}
+	p := qwenPlan{words: prefixedLetters{class: class}, tail: wordTail{symbols: symbolRun{class: class}}}
 	return Plan{match: p.match}
 }
 
 type qwenPlan struct {
 	contractions contractionSet
 	words        prefixedLetters
-	numbers      singleNumber
-	symbols      symbolRun
-	whitespace   whitespaceRun
+	tail         wordTail
+}
+
+// wordTail preserves the common ordered number, symbol and whitespace branches.
+type wordTail struct {
+	numbers    singleNumber
+	symbols    symbolRun
+	whitespace whitespaceRun
 }
 
 func (p qwenPlan) match(src string, pos int) int {
@@ -47,6 +52,10 @@ func (p qwenPlan) match(src string, pos int) int {
 	if end := p.words.match(src, pos); end > pos {
 		return end
 	}
+	return p.tail.match(src, pos)
+}
+
+func (p wordTail) match(src string, pos int) int {
 	if end := p.numbers.match(src, pos); end > pos {
 		return end
 	}
@@ -54,4 +63,22 @@ func (p qwenPlan) match(src string, pos int) int {
 		return end
 	}
 	return p.whitespace.match(src, pos)
+}
+
+// CaseWords builds P04, with no contraction branch or attached suffix.
+func CaseWords() Plan {
+	p := caseWordPlan{tail: wordTail{symbols: symbolRun{class: &letters, slashSuffix: true}}}
+	return Plan{match: p.match}
+}
+
+type caseWordPlan struct {
+	words prefixedCaseWords
+	tail  wordTail
+}
+
+func (p caseWordPlan) match(src string, pos int) int {
+	if end := p.words.match(src, pos); end > pos {
+		return end
+	}
+	return p.tail.match(src, pos)
 }

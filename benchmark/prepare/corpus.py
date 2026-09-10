@@ -5,6 +5,8 @@ import gzip
 import hashlib
 import io
 import itertools
+import re
+import random
 import json
 from pathlib import Path
 import time
@@ -109,18 +111,19 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P05','testdata/qwen')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P04','testdata/patterns/P04'),('P05','testdata/qwen')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
-        # P02 has no stored outputs: retain the existing P05 native-build guard.
-        guard_dir=ROOT/'testdata/qwen' if ident=='P02' else fixture_dir
+        # P02/P04 have no stored outputs: retain the existing P05 native-build guard.
+        guard_dir=ROOT/'testdata/qwen' if ident in ('P02','P04') else fixture_dir
         guard=json.loads((guard_dir/'manifest.json').read_text())
         patterns[ident]['fixture_pattern']=guard['pattern']
         patterns[ident]['fixture_sha256']=sha((guard_dir/'cases.jsonl.gz').read_bytes())
-        patterns[ident]['full_coverage']=ident in ('P01','P05')
+        patterns[ident]['full_coverage']=ident in ('P01','P04','P05')
     manifest={'schema':3,'patterns':patterns,
               'generator_sha256':sha(Path(__file__).read_bytes()),
+              'case_tables_sha256':sha((ROOT/'internal/scan/case_tables.go').read_bytes()),
               'selection':'Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.', 'corpora':[]}
     pools=[]
     for source in SOURCES:
@@ -143,6 +146,26 @@ def main():
     for n in range(6):
         for chars in itertools.product(['0','9','a','１','²','😀'],repeat=n):
             start=len(data);data.extend(''.join(chars).encode());ranges.append((start,len(data)))
+    # Ordered case-word branches: every short class transition, property-range
+    # boundary, and reproducible random mix. Inputs are shared by all patterns.
+    case_inputs=set()
+    alphabet=['A','a','ǅ','中','ʰ','\u0301',' ','\n','1','/']
+    for n in range(1,5):
+        case_inputs.update(''.join(chars) for chars in itertools.product(alphabet,repeat=n))
+    table=ROOT/'internal/scan/case_tables.go'
+    for lo,hi in re.findall(r'\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+), [123]\}',table.read_text()):
+        for c in [int(lo,16)-1,int(lo,16),int(hi,16),int(hi,16)+1]:
+            if 0<=c<0x110000 and not 0xD800<=c<=0xDFFF:
+                ch=chr(c)
+                case_inputs.update([ch,'A'+ch+'ABa '+ch+ch,'\u0301'+ch+'\u0301'])
+    rng=random.Random(4)
+    for _ in range(2000):
+        case_inputs.add(''.join(rng.choices(alphabet+['\r',"'",'😀','²','\u2003'],k=rng.randrange(1,129))))
+    for n in [1,2,3,15,16,17,31,32,33,63,64,65,4096]:
+        for ch in ['A','a','ǅ','中','ʰ','\u0301']:
+            case_inputs.update([ch*n+'ABC','\u0301'+ch*n+'ABC','ABC'+ch*n+'DEF',ch*n+'a'])
+    for text in sorted(case_inputs):
+        start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
     for ident,kind,data,info,groups in pools:
         name=ident+'.txt.gz'; compressed=write_gzip(dest/name,data)

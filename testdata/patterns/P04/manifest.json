@@ -1,0 +1,31 @@
+{
+  "pattern_id": "P04",
+  "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "1d64a9a8eaf9f1bd80331984d81fdd514e7feafe8df83a525dd31472f275699a",
+  "source": {
+    "model_id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+    "revision": "bf77c3174f68ad409e1c2aa60daeb46e32d1c606",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16/blob/bf77c3174f68ad409e1c2aa60daeb46e32d1c606/tokenizer.json",
+    "sha256": "c6021eb6847e682f89aa52d5eb6e8c7d902a23acfc8137e25211cf84828f1592",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF references on the common benchmark corpus; no stored P04 output arrays.",
+  "oracle_native_sha256": "899b244f19f1ddd6506c45ea0f7163f38952f2a552272a687a6ef4b9ddcc7327",
+  "tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
+  "generator_sha256": "6e60e07559d0a68524c1162e4028bf9659faa53917a2815389384bd5371efd7c"
+}

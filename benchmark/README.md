@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01, P02, and P05 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01, P02, P04, and P05 regexes. It contains five approximately
 1 MiB natural text pools and a separate synthetic diagnostic pool. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -31,6 +31,7 @@ mkdir -p benchmark/bin
 go build -o benchmark/bin/benchreport ./cmd/benchreport
 benchmark/bin/benchreport -pattern P01 -output benchmark/runs/p01-my-run
 benchmark/bin/benchreport -pattern P02 -output benchmark/runs/p02-my-run
+benchmark/bin/benchreport -pattern P04 -output benchmark/runs/p04-my-run
 benchmark/bin/benchreport -pattern P05 -output benchmark/runs/p05-my-run
 ```
 
@@ -87,16 +88,16 @@ No corpus reference arrays are stored, loaded, or decompressed. Native reference
 construction, JSON transport, comparison, and reference disposal are outside the
 scan timer. Both runners refuse to measure batches that have not passed their
 reference gate. `matches` and `split` are separate oracle outputs and counters.
-The match-at diagnostic remains limited to fully covering P01/P05. P02 omits
+The match-at diagnostic remains limited to fully covering P01/P04/P05. P02 omits
 `onig-at`: its gaps require a search operation. Iterator rows count matches;
 Split rows count matches plus gaps, so P02 output counts can differ.
 
 Small regression fixtures under `testdata/` remain independent of the mass-corpus
 pipeline: they support offline Go tests and guard the pinned Unicode/reference
 profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
-recorded in each run. P02 reuses the P05 fixtures only to guard the native build,
-with their P05 expression. Its own HF references are generated live; no P02
-fixture archive is required.
+recorded in each run. P02/P04 reuse the P05 fixtures only to guard the native build,
+with their P05 expression. Their own HF references are generated live; no P02/P04
+fixture archives are required.
 
 ## Rebuild corpus inputs
 
@@ -118,7 +119,7 @@ To rebuild request ranges and manifests from existing pools without network acce
 
 Preparation records source, input, and generator hashes. It does not execute a
 regex engine or generate expected output. The native build still has to pass the
-native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02), so a crate
+native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02/P04), so a crate
 version alone is insufficient to establish Unicode compatibility.
 
 Source text uses deterministic gzip files; request ranges use plain JSON. Natural corpora are

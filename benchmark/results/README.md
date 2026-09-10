@@ -26,8 +26,8 @@ sharing one scanner plan need separately validated measurements.
 Each full P01/P05 run contains 1,710 samples: ten samples of at least 500 ms per measurement,
 using Go 1.27.0, Rust 1.90.0, HF Tokenizers 0.22.2, and onig 6.5.1. Its original
 environment and raw samples are preserved without rewriting historical metadata.
-P01 and P02 are also implemented; the other 22 regex strings remain unsupported.
-P02 has no published full performance run yet.
+P01, P02, and P04 are also implemented; the other 21 regex strings remain unsupported.
+P02/P04 have no published full performance runs yet.
 
 The [P05 refactor regression check](P05/2026-09-10-apple-m5-scalar-regression/REPORT.md)
 is a separate, completed before/after Go microbenchmark with identical harnesses.
@@ -43,7 +43,7 @@ store only inputs and their profiles in the common corpus manifest. Generate
 oracle spans in memory during the correctness stage of each run. Keep results per
 pattern, language, size, engine, and backend. Cross-pattern comparisons also need
 matching corpus hashes and reference/split settings. The current runner and oracle
-generator support P01, P02, and P05. Corpus preparation refreshes shared inputs; `-pattern`
+generator support P01, P02, P04, and P05. Corpus preparation refreshes shared inputs; `-pattern`
 selects one profile for live reference generation and measurement.
 
 The recorded September 9–10 full runs predate corpus schema 2. Their original

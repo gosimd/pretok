@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01, P02, and P05, with five pinned natural-language pools,
+**Status:** implemented for scalar P01, P02, P04, and P05, with five pinned natural-language pools,
 one synthetic pool, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
@@ -13,11 +13,12 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-Select P01, P02, or P05 with `-pattern`. Each run uses one exact supported string and its
+Select P01, P02, P04, or P05 with `-pattern`. Each run uses one exact supported string and its
 own [P01](../testdata/patterns/P01/manifest.json),
-[P02](../testdata/patterns/P02/manifest.json), or
-[P05](../testdata/qwen/manifest.json) provenance manifest. P02 stores no reference
-outputs; its native-build guard uses the existing P05 fixtures with the P05 regex. Compile once before timing scans.
+[P02](../testdata/patterns/P02/manifest.json),
+[P04](../testdata/patterns/P04/manifest.json), or
+[P05](../testdata/qwen/manifest.json) provenance manifest. P02/P04 store no reference
+outputs; their native-build guard uses the existing P05 fixtures with the P05 regex. Compile once before timing scans.
 Use the exact same decoded regex, input bytes, subject boundaries, and output
 semantics in every comparison. Broader tokenizer pipelines are a later integration
 benchmark in `gosimd/bpe`.
@@ -28,7 +29,7 @@ benchmark in `gosimd/bpe`.
 | --- | --- | --- | --- |
 | Compilation | `Compile(pattern)` | Native Oniguruma compilation; HF Split construction separately | One-time setup cost |
 | Match iteration | `Cursor` and repeated `Next` | Native Oniguruma `find_iter` | Complete ordered sequence of match spans |
-| Position matching, diagnostic | Internal Go counterpart deferred | Native Oniguruma match-at-offset loop, including input validation | Additional P01/P05 measurement; no core speedup ratio yet |
+| Position matching, diagnostic | Internal Go counterpart deferred | Native Oniguruma match-at-offset loop, including input validation | Additional P01/P04/P05 measurement; no core speedup ratio yet |
 | Public splitting | `Split(src, dst[:0])` and `Split(src, nil)` separately | Oniguruma iteration plus isolated-gap adapter and span output | Same output, with reused and fresh destination policies |
 | HF splitting stage | Public `Split` | Native HF `Split(Regex(pattern), Isolated, invert=false)` plus byte-offset extraction | Complete boundary-stage API cost, including HF representation overhead |
 | Future optimized backend | Public API using SIMD | The same API using the scalar plan | Backend-only improvement on the same semantics and allocation policy |
@@ -52,8 +53,8 @@ engine is not automatically an HF semantic reference.
 ### The MatchPrefix proposal
 
 Treat `MatchPrefix` as the operation "match this complete regex at this byte
-position", not a loop over separately compiled alternatives. Both P01 and P05 cover every
-valid scalar, so the following diagnostic is valid for both patterns:
+position", not a loop over separately compiled alternatives. P01, P04, and P05 cover every
+valid scalar, so the following diagnostic is valid for these patterns:
 
 ```text
 pos = 0
@@ -191,7 +192,7 @@ Before timing each engine on a batch:
 - Compare every ordered `(Start, End)` byte span against that live oracle for
   that exact request. Counts and checksums alone do not prove equality.
 - Verify non-empty spans, valid scalar boundaries, gap policy, and reconstruction
-  for isolated splitting. P01/P05's match-only and isolated outputs coincide because
+  for isolated splitting. P01/P04/P05's match-only and isolated outputs coincide because
   it covers the input; retain the policy labels for future patterns.
 - Confirm dependency-resolved native Oniguruma behavior against existing fixtures;
   a crate version alone does not establish parity with the recorded Python wheel.
@@ -301,6 +302,6 @@ selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
 Those files store only inputs. Each run generates reference spans for the chosen
 pattern in memory before checking all results and starting timers.
-Add any new scenarios to the common corpus. The runner selects P01, P02, or P05 per
+Add any new scenarios to the common corpus. The runner selects P01, P02, P04, or P05 per
 invocation. Broader support requires
 implementing and validating each additional pattern.

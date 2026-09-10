@@ -384,7 +384,7 @@ fn reference(
             &re.find_iter(src).collect::<Vec<_>>(),
             &matches,
         )?;
-        // Match-at is currently a diagnostic for the fully covering P01/P05 plans.
+        // Match-at is currently a diagnostic for the fully covering P01/P04/P05 plans.
         if full_coverage {
             equal("onig-at", &label, src, &at_spans(re, src)?, &matches)?;
         }
