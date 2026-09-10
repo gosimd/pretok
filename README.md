@@ -6,15 +6,17 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for eleven exact regex strings: P05 (Qwen
+**Status:** scalar implementation for thirteen exact regex strings: P05 (Qwen
 letter-only words), P01 (letters and marks), P02 (exactly three ASCII digits),
 P03 (whitespace ending at a line boundary or EOF), and P04 (ordered words with case-sensitive Unicode classes), plus P09/P13 as
 exact aliases of P05. P16 matches one ASCII digit; P07 matches 1–3 Unicode N
 scalars. P24/P20 reuse the Qwen template with N{1,3}/N+ number branches.
+P19/P06 attach optional contractions to the selected P04 word endpoint, with
+one Unicode number or groups of 1–3 respectively.
 P01/P05 share one parameterized scanner template; P02 reuses the public cursor
 and gap handling. P04 shares the number/symbol/whitespace tail and uses
 a dedicated word scanner with pinned Unicode classes. `Compile`, `Cursor`, and
-`Split` are checked against pinned Hugging Face references. The other 14 corpus
+`Split` are checked against pinned Hugging Face references. The other 12 corpus
 strings remain unsupported. No SIMD backend is implemented.
 
 ## Scope
@@ -200,7 +202,10 @@ Numeric-family reports are available for
 [P07](benchmark/results/P07/2026-09-10-apple-m5-scalar/REPORT.md),
 [P24](benchmark/results/P24/2026-09-10-apple-m5-scalar/REPORT.md),
 [P20](benchmark/results/P20/2026-09-10-apple-m5-scalar/REPORT.md).
-See the [benchmark summary](benchmark/README.md) for their per-language results.
+Case-word suffix reports are available for
+[P19](benchmark/results/P19/2026-09-10-apple-m5-scalar/REPORT.md) and
+[P06](benchmark/results/P06/2026-09-10-apple-m5-scalar/REPORT.md).
+See the [benchmark summary](benchmark/README.md) for per-language results.
 
 The [Regexp contract](docs/Regexp.md) lists the exact supported strings and plan
 components. [Oracle regeneration](research/qwen/README.md) is separate from ordinary
@@ -220,6 +225,9 @@ go test -run '^$' -fuzz FuzzP16Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP07Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP24Partition -fuzztime 10s .
 go test -run '^$' -fuzz FuzzP20Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP19Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzP06Partition -fuzztime 10s .
+go test -run '^$' -fuzz FuzzCaseWordSuffix -fuzztime 10s ./internal/scan
 go test -run '^$' -fuzz FuzzCaseWordCandidates -fuzztime 10s ./internal/scan
 ```
 

@@ -151,7 +151,7 @@ func main() {
 	}
 }
 func run() error {
-	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P05, P07, P09, P13, P16, P20 or P24")
+	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P07, P09, P13, P16, P19, P20 or P24")
 	root := flag.String("root", ".", "repository root")
 	corpus := flag.String("corpus", "benchmark/corpus", "corpus path relative to root")
 	reference := flag.String("native", "benchmark/native/target/release/pretok-reference", "native executable path relative to root")
@@ -203,6 +203,10 @@ func run() error {
 		expectedPattern = compile.QwenNumberTriplesPattern
 	case "P20":
 		expectedPattern = compile.QwenNumberRunsPattern
+	case "P19":
+		expectedPattern = compile.CaseWordsSuffixPattern
+	case "P06":
+		expectedPattern = compile.CaseWordsSuffixTriplesPattern
 	case "P05":
 	default:
 		return fmt.Errorf("unsupported benchmark pattern %q", *patternID)

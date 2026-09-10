@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P05, P07, P09, P13, P16, P20, and P24 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01–P07, P09, P13, P16, P19, P20, and P24 regexes. It contains five approximately
 1 MiB natural text pools and a separate synthetic diagnostic pool. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -67,6 +67,35 @@ the smallest reused-Split margin is 1.31× (P07, whole Japanese corpus). Cursor
 and reused Split allocate no memory in these measurements. Native allocation
 counters remain unavailable. This measures regex boundaries/HF Split, not BPE.
 
+The case-word suffix runs [P19](results/P19/2026-09-10-apple-m5-scalar/REPORT.md)
+and [P06](results/P06/2026-09-10-apple-m5-scalar/REPORT.md) each contain 1,710
+samples on Apple M5 with Go 1.27.0, the same final binaries, and the same shared
+corpus. All 68,400 requests per pattern passed the live HF boundary gate.
+Reused `Split`, median throughput in decimal MB/s for 4 KiB requests:
+
+| Language | P19 | P06 |
+|---|---:|---:|
+| English | 212.6 | 219.1 |
+| Russian | 143.6 | 145.5 |
+| Japanese | 167.1 | 169.1 |
+| Arabic | 150.0 | 150.1 |
+| Chinese | 201.1 | 202.8 |
+
+Ratios of summed median batch times across these five natural corpora:
+
+| Pattern | Oniguruma reused spans / pretok reused Split | HF Split / pretok reused Split |
+|---|---:|---:|
+| P19 | 3.20× | 5.19× |
+| P06 | 3.19× | 5.04× |
+
+Across all 21 scenarios, reused Split wins by 2.31–6.06× against Oniguruma for
+P19 and 2.26–6.09× for P06. Cursor and fresh Split also beat their corresponding
+Oniguruma baselines throughout this matrix. Cursor and reused Split allocate no
+memory in these measurements; native allocation counters remain unavailable.
+P19/P06 reuse P04 word classes and the existing contraction matcher. Their
+numeric bounds differ, so each comparison uses that pattern's own exact output.
+This measures regex boundaries/HF Split, not a complete tokenizer or BPE.
+
 ## Build and run
 
 Requirements: Go 1.27, a Rust toolchain compatible with the checked-in Cargo.lock
@@ -91,6 +120,8 @@ benchmark/bin/benchreport -pattern P16 -output benchmark/runs/p16-my-run
 benchmark/bin/benchreport -pattern P07 -output benchmark/runs/p07-my-run
 benchmark/bin/benchreport -pattern P24 -output benchmark/runs/p24-my-run
 benchmark/bin/benchreport -pattern P20 -output benchmark/runs/p20-my-run
+benchmark/bin/benchreport -pattern P19 -output benchmark/runs/p19-my-run
+benchmark/bin/benchreport -pattern P06 -output benchmark/runs/p06-my-run
 ```
 
 The default pattern is P05. Each invocation measures one pattern and records its
@@ -146,15 +177,15 @@ No corpus reference arrays are stored, loaded, or decompressed. Native reference
 construction, JSON transport, comparison, and reference disposal are outside the
 scan timer. Both runners refuse to measure batches that have not passed their
 reference gate. `matches` and `split` are separate oracle outputs and counters.
-The match-at diagnostic remains limited to fully covering P01/P04/P05/P09/P13/P20/P24. P02/P03/P07/P16 omit
+The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P16 omit
 `onig-at`: its gaps require a search operation. Iterator rows count matches;
 Split rows count matches plus gaps, so P02/P03/P07/P16 output counts can differ.
 
 Small regression fixtures under `testdata/` remain independent of the mass-corpus
 pipeline: they support offline Go tests and guard the pinned Unicode/reference
 profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
-recorded in each run. P02/P03/P04/P07/P09/P13/P16/P20/P24 reuse the P05 fixtures only to guard the native build,
-with their P05 expression. Their own HF references are generated live; no P02/P03/P04/P07/P09/P13/P16/P20/P24
+recorded in each run. P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24 reuse the P05 fixtures only to guard the native build,
+with their P05 expression. Their own HF references are generated live; no P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24
 fixture archives are required.
 
 ## Rebuild corpus inputs
@@ -177,7 +208,7 @@ To rebuild request ranges and manifests from existing pools without network acce
 
 Preparation records source, input, and generator hashes. It does not execute a
 regex engine or generate expected output. The native build still has to pass the
-native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02/P03/P04/P07/P09/P13/P16/P20/P24), so a crate
+native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02/P03/P04/P06/P07/P09/P13/P16/P19/P20/P24), so a crate
 version alone is insufficient to establish Unicode compatibility.
 
 Source text uses deterministic gzip files; request ranges use plain JSON. Natural corpora are

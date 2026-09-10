@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P19",
+  "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "ae9107185262d3e94c2d6d0e854541f2a1b82b3d8a3093967ca62bede2854ae7",
+  "source": {
+    "model_id": "tencent/Youtu-LLM-2B",
+    "revision": "8b0e73594661a945a7f5aafc737b63e3d8ad3f75",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/tencent/Youtu-LLM-2B/blob/8b0e73594661a945a7f5aafc737b63e3d8ad3f75/tokenizer.json",
+    "sha256": "2885591ad59de23306329eb64e179951e6f21ea1a6d1f9dc1dca83cf558ef31c",
+    "json_pointer": "/pre_tokenizer/pretokenizers/1/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

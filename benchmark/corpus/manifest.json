@@ -77,9 +77,23 @@
       "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": true
+    },
+    "P19": {
+      "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "pattern_sha256": "ae9107185262d3e94c2d6d0e854541f2a1b82b3d8a3093967ca62bede2854ae7",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": true
+    },
+    "P06": {
+      "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "pattern_sha256": "2d1b8dc11e89af71459b36004f698ab3693f59fd84f63e8ec2b49564ab857420",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": true
     }
   },
-  "generator_sha256": "6bdada6fa7a64178d508f7820831acc0d569a84e11a368e22a7b7b3bb164b73d",
+  "generator_sha256": "954e8a17c90242e6f9e30949b4583c990bc479e112bcf6ef1693a2dad4082aa9",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -277,18 +291,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "94ddb1982676816282e52c72a81dbc0d75d40470d6a65c17a80bf19e3d97950f",
-      "compressed_sha256": "42adbbca2d1223bc5b3b5426bd3915a12f243330cd124427aa16fd7627de22d5",
-      "bytes": 1625237,
-      "scalars": 847730,
-      "ascii_fraction": 0.23994100552719388,
+      "sha256": "3ea5af900ba233e0575d22526fdcc02d49d46128315c536a372c9f953962ec9d",
+      "compressed_sha256": "1f4fa75b08ab1353e7eaf8c5ccc0ac1d47a1c159a4101da32ee2c9c12434f14e",
+      "bytes": 2134951,
+      "scalars": 1143269,
+      "ascii_fraction": 0.2541557159859875,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "773be5fbffc658c8baa5edade6007a99f808047c72c65a81c8dbcee1454f76f9",
-          "requests": 44624
+          "sha256": "4e46e7bf930fcccb0c898f557700be22fd8c70d4b0e3cd55de1ff06fb381128e",
+          "requests": 46496
         }
       ]
     }

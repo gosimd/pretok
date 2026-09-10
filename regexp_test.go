@@ -18,6 +18,9 @@ import (
 	"github.com/gosimd/pretok"
 )
 
+const patternCaseWordsSuffix = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+const patternCaseWordsSuffixTriples = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\p{N}{1,3}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+`
+
 const patternCaseWords = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+`
 
 const patternLiteralNewlines = "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
@@ -174,7 +177,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 	count := 0
 	for _, row := range rows {
 		re, err := pretok.Compile(row.Pattern)
-		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords || row.Pattern == patternLineEnd || row.Pattern == patternLiteralNewlines || row.Pattern == patternPossessive || row.Pattern == patternDigit || row.Pattern == patternNumberTriples || row.Pattern == patternQwenTriples || row.Pattern == patternQwenRuns {
+		if row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords || row.Pattern == patternLineEnd || row.Pattern == patternLiteralNewlines || row.Pattern == patternPossessive || row.Pattern == patternDigit || row.Pattern == patternNumberTriples || row.Pattern == patternQwenTriples || row.Pattern == patternQwenRuns || row.Pattern == patternCaseWordsSuffix || row.Pattern == patternCaseWordsSuffixTriples {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
@@ -183,7 +186,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 11 {
+	if count != 13 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
 	for _, p := range []string{"", "[", ".*", "(?:" + patternLiteralNewlines + ")", patternLiteralNewlines + " ", "(?:" + patternPossessive + ")", patternPossessive + " ", strings.Replace(patternPossessive, `\p{N}|`, `\p{N}+|`, 1), `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, `\s+\z`, `(?m:\s+$)`, `\s*$`, `\s+$ `, "(?:" + patternCaseWords + ")", patternCaseWords + " ", strings.Replace(patternCaseWords, `[\r\n/]*`, `[\r\n]*`, 1), "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
@@ -194,7 +197,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples} {
 		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
@@ -264,7 +267,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples} {
 		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
 	}
 }
@@ -301,6 +304,8 @@ func FuzzP20Partition(f *testing.F) { fuzzPartition(f, patternQwenRuns) }
 func FuzzP09Partition(f *testing.F)  { fuzzPartition(f, patternLiteralNewlines) }
 func FuzzP13Partition(f *testing.F)  { fuzzPartition(f, patternPossessive) }
 func FuzzP03Partition(f *testing.F)  { fuzzPartition(f, patternLineEnd) }
+func FuzzP19Partition(f *testing.F)  { fuzzPartition(f, patternCaseWordsSuffix) }
+func FuzzP06Partition(f *testing.F)  { fuzzPartition(f, patternCaseWordsSuffixTriples) }
 func FuzzP04Partition(f *testing.F)  { fuzzPartition(f, patternCaseWords) }
 func FuzzP02Partition(f *testing.F)  { fuzzPartition(f, patternTriples) }
 func FuzzP01Partition(f *testing.F)  { fuzzPartition(f, patternMarks) }
@@ -399,6 +404,10 @@ func BenchmarkP13Split(b *testing.B)       { benchmarkSplit(b, patternPossessive
 func BenchmarkP13SplitFresh(b *testing.B)  { benchmarkSplit(b, patternPossessive, true) }
 func BenchmarkP03Split(b *testing.B)       { benchmarkSplit(b, patternLineEnd, false) }
 func BenchmarkP03SplitFresh(b *testing.B)  { benchmarkSplit(b, patternLineEnd, true) }
+func BenchmarkP19Split(b *testing.B)       { benchmarkSplit(b, patternCaseWordsSuffix, false) }
+func BenchmarkP19SplitFresh(b *testing.B)  { benchmarkSplit(b, patternCaseWordsSuffix, true) }
+func BenchmarkP06Split(b *testing.B)       { benchmarkSplit(b, patternCaseWordsSuffixTriples, false) }
+func BenchmarkP06SplitFresh(b *testing.B)  { benchmarkSplit(b, patternCaseWordsSuffixTriples, true) }
 func BenchmarkP04Split(b *testing.B)       { benchmarkSplit(b, patternCaseWords, false) }
 func BenchmarkP04SplitFresh(b *testing.B)  { benchmarkSplit(b, patternCaseWords, true) }
 func BenchmarkP02SplitFresh(b *testing.B)  { benchmarkSplit(b, patternTriples, true) }

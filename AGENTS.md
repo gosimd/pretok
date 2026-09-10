@@ -9,7 +9,8 @@ an ASCII-triplet plan, P03 through a line-end whitespace search, and P04 through
 an ordered case-word plan. Plans share cursor/gap handling and common
 constructions. P09/P13 are independently validated exact aliases of the P05 plan.
 P16/P07 use shared numeric runs; P24/P20 parameterize the Qwen number bound.
-The other 14 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
+P19/P06 reuse ordered case words with optional contraction suffixes.
+The other 12 strings and SIMD remain unsupported. Keep compatibility claims scoped to these patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
 Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary

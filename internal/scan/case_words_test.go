@@ -1,9 +1,64 @@
 package scan
 
 import (
+	"regexp"
 	"testing"
 	"unicode/utf8"
 )
+
+// This independent regex has the same folds for the contraction alphabet
+// (including long s); it does not call the production contraction matcher.
+var referenceSuffix = regexp.MustCompile(`\A(?i:'s|'t|'re|'ve|'m|'ll|'d)`)
+
+func checkCaseWordSuffix(t testing.TB, src string) {
+	t.Helper()
+	if src == "" {
+		return
+	}
+	wordEnd := referenceCaseWord(src)
+	for _, max := range []int{1, 3} {
+		p := newCaseWordPlan(max)
+		want := wordEnd
+		if wordEnd > 0 {
+			if suffix := referenceSuffix.FindStringIndex(src[wordEnd:]); suffix != nil {
+				want += suffix[1]
+			}
+		} else {
+			want = p.tail.match(src, 0)
+		}
+		if got := p.matchWithSuffix(src, 0); got != want {
+			t.Fatalf("%q max=%d: %d want %d", src, max, got, want)
+		}
+	}
+}
+
+func TestCaseWordSuffixPriority(t *testing.T) {
+	var visit func(string, int)
+	visit = func(word string, depth int) {
+		for _, suffix := range []string{"'s", "'RE", "'ſ", "'ll", "'r", "'x", "'s's", "’s", ""} {
+			checkCaseWordSuffix(t, word+suffix+"ABC")
+		}
+		if depth == 0 {
+			return
+		}
+		for _, r := range []rune{'A', 'a', '中', '\u0301', ' ', '\n', '1', '!', '\''} {
+			visit(word+string(r), depth-1)
+		}
+	}
+	visit("", 4)
+}
+
+func FuzzCaseWordSuffix(f *testing.F) {
+	for _, s := range []string{"we're", "AA中BB's", "\u0301ABC's", "A'S'S", "!'s", "a'ſ", "\xff"} {
+		f.Add(s)
+	}
+	f.Fuzz(func(t *testing.T, src string) {
+		if len(src) > 256 || !utf8.ValidString(src) {
+			return
+		}
+		checkCaseWordSuffix(t, src)
+	})
+}
 
 // Explicit greedy quantifier backtracking, independent of the scanner's
 // last-overlap metadata. Character membership is separately validated by HF.

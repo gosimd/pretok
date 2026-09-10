@@ -4,10 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P05, P07, P09, P13, P16, P20, and P24.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P07, P09, P13, P16, P19, P20, and P24.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
 an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
-ordered case-word candidates. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. The other 14
+ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. The other 12
 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
@@ -188,6 +188,28 @@ in memory on the common benchmark corpus, with no P04 output archive.
 
 There is no normalization, ByteLevel mapping, or BPE processing here.
 
+P19 and P06 extend the two ordered P04 word alternatives with the same optional
+`(?i:'s|'t|'re|'ve|'m|'ll|'d)?` suffix on each. P19 retains single Unicode N
+scalars; P06 uses N{1,3}. All other classes, alternative order, slash/CR/LF symbol
+suffixes, and whitespace decisions remain those of P04. Exact strings and source
+settings are pinned in the [P19](../testdata/patterns/P19/manifest.json) and
+[P06](../testdata/patterns/P06/manifest.json) manifests.
+
+Select the P04 word endpoint first, then try one existing `contractionSet` match
+at that endpoint. The suffix is optional and its apostrophe cannot occur in the
+word body, so it neither forces backtracking to an earlier body endpoint nor
+justifies switching to the later word alternative. `we're` is one match;
+`AA中BB's` is `AA中` plus `BB's`. A leading mark still participates in P04's
+first-alternative prefix backtracking: `\u0301ABC's` becomes the mark plus `ABC's`.
+
+Contractions attach only to words. `1's` remains `1` plus `'s`; `!'s` remains
+`!'` plus `s`. Only one suffix attaches: `A'S'S` becomes `A'S` plus `'S`.
+The existing scoped case-fold matcher handles `a'ſ` as one match. Both patterns
+cover all valid UTF-8, so match-only and isolated spans coincide. This establishes
+regex-stage compatibility with the pinned profile, not a complete HF pipeline.
+No new Unicode tables or regex parsing are needed. P04 retains its existing
+runtime entry point; the suffix plan reuses its word matcher and shared tail.
+
 ## API
 
 ```go
@@ -213,7 +235,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01–P05, P07, P09, P13, P16, P20, and P24 are implemented; the remaining strings are future
+unique strings. P01–P07, P09, P13, P16, P19, P20, and P24 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any

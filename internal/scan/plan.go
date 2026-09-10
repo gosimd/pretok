@@ -86,7 +86,7 @@ func (p wordTail) match(src string, pos int) int {
 
 // CaseWords builds P04, with no contraction branch or attached suffix.
 func CaseWords() Plan {
-	p := caseWordPlan{tail: wordTail{numberMax: 1, symbols: symbolRun{class: &letters, slashSuffix: true}}}
+	p := newCaseWordPlan(1)
 	return Plan{match: p.match}
 }
 
@@ -97,6 +97,30 @@ type caseWordPlan struct {
 
 func (p caseWordPlan) match(src string, pos int) int {
 	if end := p.words.match(src, pos); end > pos {
+		return end
+	}
+	return p.tail.match(src, pos)
+}
+
+// CaseWordsWithSuffix builds P19 (one N) or P06 (1–3 N) using P04's
+// ordered word endpoints and the existing scoped contraction matcher.
+func CaseWordsWithSuffix(numberMax int) Plan {
+	p := newCaseWordPlan(numberMax)
+	return Plan{match: p.matchWithSuffix}
+}
+
+func newCaseWordPlan(numberMax int) caseWordPlan {
+	return caseWordPlan{tail: wordTail{numberMax: numberMax, symbols: symbolRun{class: &letters, slashSuffix: true}}}
+}
+
+// The suffix is optional and cannot overlap the word classes. Select the word
+// alternative first, then attach at most one contraction. A longer second word
+// alternative must never displace the first just because it has a suffix.
+func (p caseWordPlan) matchWithSuffix(src string, pos int) int {
+	if end := p.words.match(src, pos); end > pos {
+		if end < len(src) {
+			return (contractionSet{}).match(src, end)
+		}
 		return end
 	}
 	return p.tail.match(src, pos)

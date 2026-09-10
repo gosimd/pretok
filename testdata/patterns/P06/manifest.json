@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P06",
+  "pattern": "[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]*[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\\r\\n\\p{L}\\p{N}]?[\\p{Lu}\\p{Lt}\\p{Lm}\\p{Lo}\\p{M}]+[\\p{Ll}\\p{Lm}\\p{Lo}\\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n/]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+  "pattern_sha256": "2d1b8dc11e89af71459b36004f698ab3693f59fd84f63e8ec2b49564ab857420",
+  "source": {
+    "model_id": "MiniMaxAI/MiniMax-M1-40k",
+    "revision": "2d1d1c2f00c97fc1245bfce7648649b76e0a8e6e",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/MiniMaxAI/MiniMax-M1-40k/blob/2d1d1c2f00c97fc1245bfce7648649b76e0a8e6e/tokenizer.json",
+    "sha256": "369f547b736fad84af7c5bd8523ab1414b7116b5d167d84a10cf37c45dc79348",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Removed",
+      "invert": true
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

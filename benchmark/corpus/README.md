@@ -35,3 +35,8 @@ mixed Nd/Nl/No scalars, astral numbers, and neighbors of every pinned N range.
 These inputs are shared by all patterns. P16/P07 may leave unmatched gaps;
 P24/P20 cover the entire subject. No per-pattern corpus or expected-output
 archive is stored.
+
+Case-word suffix diagnostics cover both ordered word branches, leading marks,
+scoped case folds, partial/repeated contractions, non-word suffix contexts, and
+long words near common boundary sizes. These inputs also belong to the shared
+synthetic pool and are verified for every selected pattern.
