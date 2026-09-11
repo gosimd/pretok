@@ -127,6 +127,20 @@
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": false
     },
+    "P12": {
+      "pattern": "(?:[\\u4E00-\\u9FFF\\u3040-\\u309F\\u30A0-\\u30FF\\u3400-\\u4DBF\\uf900-\\uFAFF\\uFF65-\\uFF9F\\u2F00-\\u2FDF]+|[\\u0E00-\\u0E7F]+|[\\u0E80-\\u0EFF]+|[\\u1780-\\u17FF]+|[\\u1000-\\u109F\\uAA60-\\uAA7F\\uA9E0-\\uA9FF]+|[\\uAC00-\\uD7AF\\u1100-\\u11FF]+)",
+      "pattern_sha256": "714ac659c62876a8560c6ac41fcfeeecb4065d7f4e46be6a8565c44c2425125c",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
+    "P15": {
+      "pattern": "\\p{Hangul}+|[！…“”‘’—：；，、-〿︰-﹏]+|[ㄅ-ㄯ]+|[一-龥぀-ゟ゠-ヿ]+",
+      "pattern_sha256": "8526ac36cd4095ef8eda9d2ba2013bfca80b9888305d0de8550f7a96fad1f44b",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
     "P23": {
       "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
       "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
@@ -135,7 +149,7 @@
       "full_coverage": false
     }
   },
-  "generator_sha256": "b703374eef65b5acabcfa3077262823d5c96d811dd1ef1025d94223ffb242161",
+  "generator_sha256": "bc7a99a7dfee8b69f94872e3523814c31349ddc9e12688748fff35d6e28f6188",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -333,18 +347,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "d8565712ffb89ff78f1e6dd96e54d4941cceccb40240c8cc7e2dd35da5edf517",
-      "compressed_sha256": "174353672bf9205d1c896bc2d96a3e3ff59b7915e0882b4fb487231b39c3a90e",
-      "bytes": 2287862,
-      "scalars": 1246316,
-      "ascii_fraction": 0.27114834723423004,
+      "sha256": "90d05325d39a4883b340acad88533f1f3057f189efe4285bd8c826123335b797",
+      "compressed_sha256": "0f118c9fd7a4131685756278f9da588e3a5572acd312b70c4e5412d501c88553",
+      "bytes": 2677360,
+      "scalars": 1381148,
+      "ascii_fraction": 0.2345030178982281,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "3cc9cf625dcacbd036fc78e43d4253e432c031308c5b002d3f02e21a60f4cb53",
-          "requests": 72871
+          "sha256": "e029bb14a7191cf4b5e4446ecc12bbedce5fe08b16fb7f902e30345448c3c42e",
+          "requests": 96186
         }
       ]
     }

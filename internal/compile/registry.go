@@ -90,7 +90,25 @@ const ComplementPattern = ` ?[^(\s|[.,!?…。，、।۔،])]+`
 
 var complement = scan.Complement()
 
+// ScriptGroupsPattern is the exact decoded corpus P12 string.
+const ScriptGroupsPattern = `(?:[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\uf900-\uFAFF\uFF65-\uFF9F\u2F00-\u2FDF]+|[\u0E00-\u0E7F]+|[\u0E80-\u0EFF]+|[\u1780-\u17FF]+|[\u1000-\u109F\uAA60-\uAA7F\uA9E0-\uA9FF]+|[\uAC00-\uD7AF\u1100-\u11FF]+)`
+
+var scriptGroups = scan.ScriptGroups()
+
+// HangulGroupsPattern is the exact decoded corpus P15 string.
+const HangulGroupsPattern = `\p{Hangul}+|[！…“”‘’—：；，、-〿︰-﹏]+|[ㄅ-ㄯ]+|[一-龥぀-ゟ゠-ヿ]+`
+
+var hangulGroups = scan.HangulGroups()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == HangulGroupsPattern {
+		return &hangulGroups, true
+	}
+
+	if pattern == ScriptGroupsPattern {
+		return &scriptGroups, true
+	}
+
 	if pattern == NewlinePattern {
 		return &newline, true
 	}

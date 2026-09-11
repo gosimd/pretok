@@ -4,10 +4,10 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P09, P11, P13, P16–P21, P23, and P24.
+**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P09, P11–P13, P15–P21, P23, and P24.
 P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
 an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
-ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. P08/P11/P17/P18/P21/P23 share exact-set run search. The other 6
+ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. P08/P11/P17/P18/P21/P23 share exact-set run search. P12/P15 retain their selected alternative throughout a run. The other 4
 strings, including equivalent aliases, return `ErrUnsupportedPattern`.
 SIMD is not implemented.
 
@@ -235,7 +235,7 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01–P09, P11, P13, P16–P21, P23, and P24 are implemented; the remaining strings are future
+unique strings. P01–P09, P11–P13, P15–P21, P23, and P24 are implemented; the remaining strings are future
 implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any
@@ -347,3 +347,28 @@ There is no runtime parser, regex fallback, normalization, or new public API.
 Each exact decoded expression and immutable source is in its
 `testdata/patterns/PXX/manifest.json`; the common benchmark gate generates HF
 matches and isolated splits live before timing.
+
+## Ordered group runs: P12 and P15
+
+[P12](../testdata/patterns/P12/manifest.json) contains six ordered alternatives:
+CJK/kana ranges, Thai, Lao, Khmer, Myanmar ranges, and Hangul ranges. Each branch
+has its own `+`. `中ก` therefore produces two adjacent matches, while `中あカ`
+remains one. P12 uses its written ranges, not Unicode Script properties.
+
+[P15](../testdata/patterns/P15/manifest.json) orders Hangul, a literal punctuation
+set, Bopomofo, and P21's exact CJK/kana set. Its Hangul Script property is pinned
+to HF Tokenizers 0.22.2; `benchmark/prepare/grouped.py` verifies its 14 ranges by
+extracting every matching Unicode scalar from that reference. Go's current
+Unicode tables do not determine this contract.
+
+The first two P15 groups overlap at U+302E and U+302F. On the first scalar, the
+scanner selects the first matching alternative, then keeps that exact set for
+the whole run. Thus `〮、` gives `〮`, `、`, but `、〮` stays together;
+`、〮가` gives `、〮`, `가`. A scalar does not have one permanent group ID.
+Testing the selected set directly preserves overlaps without a membership mask.
+
+The shared `groupedRun` uses existing `exactSet` membership and the same run
+consumption loop as plain sets. Plans are immutable; group selection lives only
+in the current search call. Both patterns can leave gaps: Cursor skips them and
+Split preserves maximal gaps. UTF-8 validation, byte offsets, destination reuse,
+and the public API are unchanged. Only the two exact decoded strings compile.

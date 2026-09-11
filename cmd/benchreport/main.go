@@ -151,7 +151,7 @@ func main() {
 	}
 }
 func run() error {
-	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P09, P11, P13, P16–P21, P23 or P24")
+	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P09, P11–P13, P15–P21, P23 or P24")
 	root := flag.String("root", ".", "repository root")
 	corpus := flag.String("corpus", "benchmark/corpus", "corpus path relative to root")
 	reference := flag.String("native", "benchmark/native/target/release/pretok-reference", "native executable path relative to root")
@@ -217,6 +217,10 @@ func run() error {
 		expectedPattern = compile.PrefixedSymbolsPattern
 	case "P08":
 		expectedPattern = compile.PrefixedAlphabetPattern
+	case "P12":
+		expectedPattern = compile.ScriptGroupsPattern
+	case "P15":
+		expectedPattern = compile.HangulGroupsPattern
 	case "P23":
 		expectedPattern = compile.ComplementPattern
 	case "P05":

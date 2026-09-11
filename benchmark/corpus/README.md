@@ -42,3 +42,7 @@ long words near common boundary sizes. These inputs also belong to the shared
 synthetic pool and are verified for every selected pattern.
 
 The shared synthetic pool also covers P08/P11/P17/P18/P21/P23 literal-range endpoints and neighbors, supplementary-plane characters, U+3000 prefix/body overlap, CRLF, and P23 nested-class delimiters. These are input scenarios for every pattern; references are generated live.
+
+P12/P15 share this corpus as well: ordered script transitions, exact range boundaries, long group runs, and both directions through U+302E/U+302F overlaps are included. Reference spans are generated live for each selected pattern.
+
+The grouped-pattern expansion contains 118,090 requests across the same 21 batches. Offline regeneration is byte-identical; live correctness comparison passes for all 21 supported patterns.

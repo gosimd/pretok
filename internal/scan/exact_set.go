@@ -62,14 +62,7 @@ func (p exactRun) find(src string, pos int) (int, int) {
 			if prefixStart >= 0 {
 				start = prefixStart
 			}
-			pos += size
-			for pos < len(src) {
-				r, size = runeAt(src, pos)
-				if !p.set.contains(r) {
-					break
-				}
-				pos += size
-			}
+			pos = p.set.runEnd(src, pos+size)
 			// A prefix that is also a body member (P18 U+3000) is part
 			// of this same maximal run. Even a singleton succeeds: this
 			// is the endpoint after the regex backs out its optional prefix.
@@ -101,4 +94,17 @@ func Complement() Plan {
 	ranges := []runeRange{{'!', '!'}, {'(', ')'}, {',', ','}, {'.', '.'}, {'?', '?'}, {'|', '|'}, {0x60C, 0x60C}, {0x6D4, 0x6D4}, {0x964, 0x964}, {0x2026, 0x2026}, {0x3001, 0x3002}, {0xFF0C, 0xFF0C}}
 	p := exactRun{set: newExactSet(ranges, true, true), prefix: spaceSetPrefix}
 	return Plan{find: p.find}
+}
+
+// runEnd extends a nonempty match within one fixed set. Both plain and grouped
+// runs use this same consumption loop; classification never changes mid-run.
+func (s *exactSet) runEnd(src string, pos int) int {
+	for pos < len(src) {
+		r, size := runeAt(src, pos)
+		if !s.contains(r) {
+			break
+		}
+		pos += size
+	}
+	return pos
 }

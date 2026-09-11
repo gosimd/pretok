@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P09, P11, P13, P16–P21, P23, and P24 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01–P09, P11–P13, P15–P21, P23, and P24 regexes. It contains five approximately
 1 MiB natural text pools and a separate synthetic diagnostic pool. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -128,7 +128,7 @@ The default pattern is P05. Each invocation measures one pattern and records its
 ID in raw samples and environment metadata.
 
 Defaults are 10 samples, at least 500 ms each, all 21 corpus/size batches, eight
-scan engine/mode rows (seven for P02/P03/P07/P08/P11/P16/P17/P18/P21/P23) and three compilation rows. Expect roughly 15 minutes plus
+scan engine/mode rows (seven for P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P23) and three compilation rows. Expect roughly 15 minutes plus
 correctness gates and warm-up. Engines execute sequentially, with reversed order
 on alternate rounds. All raw samples and environment hashes are retained. Existing
 output directories are never overwritten; choose a new `-output` for each run.
@@ -177,15 +177,15 @@ No corpus reference arrays are stored, loaded, or decompressed. Native reference
 construction, JSON transport, comparison, and reference disposal are outside the
 scan timer. Both runners refuse to measure batches that have not passed their
 reference gate. `matches` and `split` are separate oracle outputs and counters.
-The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P08/P11/P16/P17/P18/P21/P23 omit
+The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P23 omit
 `onig-at`: its gaps require a search operation. Iterator rows count matches;
-Split rows count matches plus gaps, so P02/P03/P07/P08/P11/P16/P17/P18/P21/P23 output counts can differ.
+Split rows count matches plus gaps, so P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P23 output counts can differ.
 
 Small regression fixtures under `testdata/` remain independent of the mass-corpus
 pipeline: they support offline Go tests and guard the pinned Unicode/reference
 profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
-recorded in each run. P02–P04/P06–P09/P11/P13/P16–P21/P23/P24 reuse the P05 fixtures only to guard the native build,
-with their P05 expression. Their own HF references are generated live; no P02–P04/P06–P09/P11/P13/P16–P21/P23/P24
+recorded in each run. P02–P04/P06–P09/P11–P13/P15–P21/P23/P24 reuse the P05 fixtures only to guard the native build,
+with their P05 expression. Their own HF references are generated live; no P02–P04/P06–P09/P11–P13/P15–P21/P23/P24
 fixture archives are required.
 
 ## Rebuild corpus inputs
@@ -208,7 +208,7 @@ To rebuild request ranges and manifests from existing pools without network acce
 
 Preparation records source, input, and generator hashes. It does not execute a
 regex engine or generate expected output. The native build still has to pass the
-native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02–P04/P06–P09/P11/P13/P16–P21/P23/P24), so a crate
+native-build regression fixtures (26,820 for P01; the 7,738 P05 cases for P05/P02–P04/P06–P09/P11–P13/P15–P21/P23/P24), so a crate
 version alone is insufficient to establish Unicode compatibility.
 
 Source text uses deterministic gzip files; request ranges use plain JSON. Natural corpora are
@@ -264,3 +264,45 @@ All six patterns may leave unmatched gaps; match-at-offset is therefore omitted.
 They reuse one exact-set run search with prefix parameters; P11 searches single
 CR/LF bytes. Shared inputs have grown to 94,775 requests with exact-range and
 prefix-overlap diagnostics. Expected outputs are generated live, not stored.
+
+P12/P15 are supported by `-pattern` and the common correctness gate. Use `benchmark/bin/benchreport -pattern P12 -verify-only -output benchmark/runs/p12-verify` (or P15) to regenerate and compare live references without timing.
+
+
+## Ordered group patterns: completed Apple M5 measurements
+
+Full scalar runs for [P12](results/P12/2026-09-11-apple-m5-scalar/REPORT.md) and
+[P15](results/P15/2026-09-11-apple-m5-scalar/REPORT.md) use Go 1.27.0,
+Rust 1.90.0, HF Tokenizers 0.22.2 and onig crate 6.5.1 on Apple M5. Each has
+1,500 samples: ten repetitions of at least 500 ms, all 21 batches and separate
+compile measurements. One worker; public UTF-8 validation included. Source,
+binary, corpus and settings fingerprints match across both runs.
+
+Reused Split throughput (decimal MB/s), natural-language requests of 4 KiB:
+
+| Language | P12 | P15 |
+| --- | ---: | ---: |
+| English | 235.5 | 333.6 |
+| Russian | 111.8 | 140.9 |
+| Japanese | 280.7 | 280.6 |
+| Arabic | 113.3 | 139.0 |
+| Chinese | 323.0 | 319.4 |
+
+The following ratios divide the sum of five language batch medians by the
+corresponding sum for pretok on 4 KiB requests. They compare equivalent
+materialized outputs and keep regex-engine and HF-stage results separate.
+
+| Pattern | Oniguruma reused / pretok reused | HF Split / pretok reused | Minimum Oniguruma ratio across all 21 workloads |
+| --- | ---: | ---: | ---: |
+| P12 | 2.23× | 3.00× | 1.78× |
+| P15 | 2.35× | 3.32× | 1.69× |
+
+Neither pattern regresses against its corresponding Oniguruma mode on any of the
+21 measured workloads, separately for Cursor/iterator, reused Split and fresh
+Split. Cursor and reused Split allocate zero bytes and objects. The full reports
+include fresh allocations, ns/request, IQR, compile time and all language/size
+combinations. Native allocation counters are unavailable. These measurements
+cover regex boundaries and native HF Split, not full BPE or ByteLevel pipelines.
+
+Expected matches and isolated splits were generated live and compared exactly on
+118,090 requests before timing. No new oracle output arrays are stored. Historical
+reports preserve the fingerprints of the implementations and corpora they measured.

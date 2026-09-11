@@ -2,11 +2,12 @@ package pretok_test
 
 import (
 	"errors"
-	"github.com/gosimd/pretok"
 	"regexp"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/gosimd/pretok"
 )
 
 // Exact independent literals; these are not copied from the production registry.
@@ -20,7 +21,7 @@ const patternP23 = ` ?[^(\s|[.,!?…。，、।۔،])]+`
 // HF 0.22.2 whitespace profile expanded for Go RE2 (whose \s is ASCII).
 const referenceSpace = `\x{9}-\x{D}\x{20}\x{85}\x{A0}\x{1680}\x{2000}-\x{200A}\x{2028}\x{2029}\x{202F}\x{205F}\x{3000}`
 
-var setPatterns = map[string]string{"P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23}
+var setPatterns = map[string]string{"P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23, "P12": patternP12, "P15": patternP15}
 var setReferences = func() map[string]*regexp.Regexp {
 	out := make(map[string]*regexp.Regexp)
 	for _, p := range setPatterns {
@@ -28,7 +29,7 @@ var setReferences = func() map[string]*regexp.Regexp {
 		if p == patternP23 {
 			translated = ` ?[^` + referenceSpace + `().,!?.|…。，、।۔،]+`
 		}
-		out[p] = regexp.MustCompile(translated)
+		out[p] = regexp.MustCompile(groupedReferencePattern(translated))
 	}
 	return out
 }()

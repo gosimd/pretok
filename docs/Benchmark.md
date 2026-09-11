@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01–P09, P11, P13, P16–P21, P23, and P24, with five pinned natural-language pools,
+**Status:** implemented for scalar P01–P09, P11–P13, P15–P21, P23, and P24, with five pinned natural-language pools,
 one synthetic pool, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
@@ -13,7 +13,7 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-Select P01–P09, P11, P13, P16–P21, P23, or P24 with `-pattern`. Each run uses one exact supported string and its
+Select P01–P09, P11–P13, P15–P21, P23, or P24 with `-pattern`. Each run uses one exact supported string and its
 own [P01](../testdata/patterns/P01/manifest.json),
 [P02](../testdata/patterns/P02/manifest.json),
 [P03](../testdata/patterns/P03/manifest.json),
@@ -25,7 +25,7 @@ own [P01](../testdata/patterns/P01/manifest.json),
 [P24](../testdata/patterns/P24/manifest.json), and [P20](../testdata/patterns/P20/manifest.json)
 use the same reference-generation pipeline. The case-word suffix profiles
 [P19](../testdata/patterns/P19/manifest.json) and [P06](../testdata/patterns/P06/manifest.json)
-also generate their references live. P02–P04/P06–P09/P11/P13/P16–P21/P23/P24 store no reference
+also generate their references live. P02–P04/P06–P09/P11–P13/P15–P21/P23/P24 store no reference
 outputs; their native-build guard uses the existing P05 fixtures with the P05 regex. Compile once before timing scans.
 Use the exact same decoded regex, input bytes, subject boundaries, and output
 semantics in every comparison. Broader tokenizer pipelines are a later integration
@@ -211,7 +211,7 @@ pattern to make the comparison compile. Correctness, hashes, and corpus statisti
 are computed outside the measured interval. Corpus reference arrays are never
 persisted. Discard them after checking; retain only counts and buffer capacities.
 
-For P02/P03/P07/P08/P11/P16/P17/P18/P21/P23, omit the match-at diagnostic: unmatched gaps are expected. Match-only
+For P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P23, omit the match-at diagnostic: unmatched gaps are expected. Match-only
 rows count matches, while isolated-split rows include maximal gaps. A subject
 with no match still measures a complete scan; its match throughput is zero.
 
@@ -310,8 +310,10 @@ selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
 Those files store only inputs. Each run generates reference spans for the chosen
 pattern in memory before checking all results and starting timers.
-Add any new scenarios to the common corpus. The runner selects P01–P09, P11, P13, P16–P21, P23, or P24 per
+Add any new scenarios to the common corpus. The runner selects P01–P09, P11–P13, P15–P21, P23, or P24 per
 invocation. Broader support requires
 implementing and validating each additional pattern.
 
 P08/P11/P17/P18/P21/P23 use the same 21 batches. They are partial patterns, so match-at-offset is omitted. Each default complete run contains 1,500 samples (seven scan engines over 21 batches plus three compile engines, ten repetitions each, at least 500 ms per sample).
+
+The P12/P15 profiles are partial grouped alternatives. They share the existing corpus and omit match-at-offset. Their source manifests pin exact decoded strings and HF settings; `-verify-only` generates live reference matches and splits before comparing every request.

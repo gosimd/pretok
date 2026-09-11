@@ -186,7 +186,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
-	if count != 19 {
+	if count != 21 {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
 	for _, p := range []string{"", "[", ".*", "(?:" + patternLiteralNewlines + ")", patternLiteralNewlines + " ", "(?:" + patternPossessive + ")", patternPossessive + " ", strings.Replace(patternPossessive, `\p{N}|`, `\p{N}+|`, 1), `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, `\s+\z`, `(?m:\s+$)`, `\s*$`, `\s+$ `, "(?:" + patternCaseWords + ")", patternCaseWords + " ", strings.Replace(patternCaseWords, `[\r\n/]*`, `[\r\n]*`, 1), "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
@@ -197,7 +197,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 }
 
 func TestOwnershipAndErrors(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23, "P12": patternP12, "P15": patternP15} {
 		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
@@ -276,7 +276,7 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 }
 
 func TestConcurrentReuse(t *testing.T) {
-	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23} {
+	for id, p := range map[string]string{"P01": patternMarks, "P02": patternTriples, "P03": patternLineEnd, "P04": patternCaseWords, "P05": pattern, "P09": patternLiteralNewlines, "P13": patternPossessive, "P16": patternDigit, "P07": patternNumberTriples, "P24": patternQwenTriples, "P20": patternQwenRuns, "P19": patternCaseWordsSuffix, "P06": patternCaseWordsSuffixTriples, "P11": patternP11, "P21": patternP21, "P17": patternP17, "P18": patternP18, "P08": patternP08, "P23": patternP23, "P12": patternP12, "P15": patternP15} {
 		t.Run(id, func(t *testing.T) { testConcurrentReuse(t, compiledPattern(t, p)) })
 	}
 }
@@ -320,7 +320,7 @@ func FuzzP02Partition(f *testing.F)  { fuzzPartition(f, patternTriples) }
 func FuzzP01Partition(f *testing.F)  { fuzzPartition(f, patternMarks) }
 func FuzzQwenPartition(f *testing.F) { fuzzPartition(f, pattern) }
 func fuzzPartition(f *testing.F, pattern string) {
-	for _, s := range []string{"", "we're", "x123456y12", "１２３123١٢٣", "\u2003\u2003X", "a\u0301b", "²Ⅳ１２3", "\r\n\tX", "\xff"} {
+	for _, s := range []string{"中ก", "、〮가", "가〮、", "〮〯가", "", "we're", "x123456y12", "１２３123١٢٣", "\u2003\u2003X", "a\u0301b", "²Ⅳ１２3", "\r\n\tX", "\xff"} {
 		f.Add(s)
 	}
 	re := compiledPattern(f, pattern)

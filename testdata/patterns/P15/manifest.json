@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P15",
+  "pattern": "\\p{Hangul}+|[！…“”‘’—：；，、-〿︰-﹏]+|[ㄅ-ㄯ]+|[一-龥぀-ゟ゠-ヿ]+",
+  "pattern_sha256": "8526ac36cd4095ef8eda9d2ba2013bfca80b9888305d0de8550f7a96fad1f44b",
+  "source": {
+    "model_id": "tencent/Youtu-LLM-2B",
+    "revision": "8b0e73594661a945a7f5aafc737b63e3d8ad3f75",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/tencent/Youtu-LLM-2B/blob/8b0e73594661a945a7f5aafc737b63e3d8ad3f75/tokenizer.json",
+    "sha256": "2885591ad59de23306329eb64e179951e6f21ea1a6d1f9dc1dca83cf558ef31c",
+    "json_pointer": "/pre_tokenizer/pretokenizers/0/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}

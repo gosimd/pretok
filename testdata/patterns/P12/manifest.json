@@ -1,0 +1,28 @@
+{
+  "pattern_id": "P12",
+  "pattern": "(?:[\\u4E00-\\u9FFF\\u3040-\\u309F\\u30A0-\\u30FF\\u3400-\\u4DBF\\uf900-\\uFAFF\\uFF65-\\uFF9F\\u2F00-\\u2FDF]+|[\\u0E00-\\u0E7F]+|[\\u0E80-\\u0EFF]+|[\\u1780-\\u17FF]+|[\\u1000-\\u109F\\uAA60-\\uAA7F\\uA9E0-\\uA9FF]+|[\\uAC00-\\uD7AF\\u1100-\\u11FF]+)",
+  "pattern_sha256": "714ac659c62876a8560c6ac41fcfeeecb4065d7f4e46be6a8565c44c2425125c",
+  "source": {
+    "model_id": "arcee-ai/Trinity-Large-Thinking",
+    "revision": "dc6a99b6b74202880e31491a445a94884c97890c",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/arcee-ai/Trinity-Large-Thinking/blob/dc6a99b6b74202880e31491a445a94884c97890c/tokenizer.json",
+    "sha256": "c5a93d847b4d3a1da95e9527c30ec10144f63a823e9feec98570274980754897",
+    "json_pointer": "/pre_tokenizer/pretokenizers/4/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "validation": "Live native HF reference generation in the common benchmark pipeline; no stored output arrays."
+}
