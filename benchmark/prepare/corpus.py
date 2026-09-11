@@ -111,7 +111,7 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06'),('P11','testdata/patterns/P11'),('P21','testdata/patterns/P21'),('P17','testdata/patterns/P17'),('P18','testdata/patterns/P18'),('P08','testdata/patterns/P08'),('P12','testdata/patterns/P12'),('P15','testdata/patterns/P15'),('P22','testdata/patterns/P22'),('P23','testdata/patterns/P23')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06'),('P11','testdata/patterns/P11'),('P21','testdata/patterns/P21'),('P17','testdata/patterns/P17'),('P18','testdata/patterns/P18'),('P08','testdata/patterns/P08'),('P12','testdata/patterns/P12'),('P15','testdata/patterns/P15'),('P22','testdata/patterns/P22'),('P10','testdata/patterns/P10'),('P23','testdata/patterns/P23')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
@@ -247,7 +247,33 @@ def main():
             punctuation_inputs.add('!'+body*n+'abcé\r\nX')
     for text in sorted(punctuation_inputs):
         start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
+    # Anchored decimal rules: Nd boundaries, mixed-width digits, exact EOF,
+    # short exhaustive inputs and long failed lookahead. Shared by all patterns.
+    decimal_inputs=set()
+    for n in range(1,6):
+        decimal_inputs.update(''.join(chars) for chars in itertools.product(['1','١','１','𝟙','²','x','\n'],repeat=n))
+    for lo,hi in re.findall(r'\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}',(ROOT/'internal/scan/decimal_tables.go').read_text()):
+        for c in [int(lo,16)-1,int(lo,16),int(hi,16),int(hi,16)+1]:
+            if 0<=c<0x110000 and not 0xD800<=c<=0xDFFF:
+                ch=chr(c)
+                decimal_inputs.update([ch+'123','123'+ch,ch*5,ch+'١２𝟛4'])
+    # A newer stdlib may recognize digits absent from the pinned profile.
+    decimal_inputs.update('123'+chr(c) for c in range(0x11DE0,0x11DEA))
+    for n in [1,2,3,4,5,6,7,8,9,15,16,17,31,32,33,509,510,511,512,1020,1021,1022,4095,4096,4097]:
+        for digit in ['1','١','１','𝟙']:
+            text=digit*n
+            decimal_inputs.update([text,'x'+text,text+'x',text+'\n',text+'\r\n',text+'²'])
+    for text in sorted(decimal_inputs):
+        start=len(data);data.extend(text.encode());ranges.append((start,len(data)))
     pools.append(('synthetic','synthetic',bytes(data),{'license':'CC0-1.0','generator':'Explicit runs in corpus.py'},[(0,ranges)]))
+    # Report successful anchored matches separately from natural-text misses.
+    # This is a common diagnostic pool, not a pattern-specific corpus directory.
+    decimal_data=bytearray();decimal_requests=[]
+    for n in [4,5,7,8,16,17,31,32,64,65,127,128,256,257,508,509,511,512,1021,1022,4096,4097]:
+        for digits in ['1','١','１','𝟙','1٢３𝟜']:
+            text=''.join(digits[i%len(digits)] for i in range(n))
+            start=len(decimal_data);decimal_data.extend(text.encode());decimal_requests.append((start,len(decimal_data)))
+    pools.append(('decimal','synthetic',bytes(decimal_data),{'license':'CC0-1.0','generator':'Explicit Nd runs in corpus.py'},[(0,decimal_requests)]))
     for ident,kind,data,info,groups in pools:
         name=ident+'.txt.gz'; compressed=write_gzip(dest/name,data)
         text=data.decode()

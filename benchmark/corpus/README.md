@@ -50,3 +50,10 @@ The grouped-pattern expansion contains 118,090 requests across the same 21 batch
 P22 extends the shared synthetic inputs with P|S boundaries and neighbors, every ASCII prefix, Unicode marks, controls, number gaps and ordered word/symbol transitions. All patterns use these same inputs; reference outputs are generated live.
 
 The P22 expansion contains 141,415 shared requests across 21 batches. Table and corpus regeneration reproduce the same bytes.
+
+P10 adds Nd boundary contexts, exhaustive short inputs and exact-EOF failures to
+`synthetic`. A second shared diagnostic pool, `decimal`, contains 110 pure decimal
+subjects of 4–4,097 scalars, all with a nonzero remainder modulo three. It covers
+ASCII, Arabic-Indic, fullwidth, mathematical and mixed-width digits. This makes
+successful P10 matches measurable separately from natural-text rejection. The
+corpus now has seven pools and 22 batches, all available to every pattern.

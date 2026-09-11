@@ -1,7 +1,7 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01–P09, P11–P13, and P15–P24, with five pinned natural-language pools,
-one synthetic pool, Go measurement/orchestration, native Oniguruma/HF runners,
+**Status:** implemented for scalar P01–P13 and P15–P24, with five pinned natural-language pools,
+two shared synthetic pools, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
 match-at core comparison remain future work.
@@ -13,7 +13,7 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-Select P01–P09, P11–P13, or P15–P24 with `-pattern`. Each run uses one exact supported string and its
+Select P01–P13 or P15–P24 with `-pattern`. Each run uses one exact supported string and its
 own [P01](../testdata/patterns/P01/manifest.json),
 [P02](../testdata/patterns/P02/manifest.json),
 [P03](../testdata/patterns/P03/manifest.json),
@@ -310,7 +310,7 @@ selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
 Those files store only inputs. Each run generates reference spans for the chosen
 pattern in memory before checking all results and starting timers.
-Add any new scenarios to the common corpus. The runner selects P01–P09, P11–P13, or P15–P24 per
+Add any new scenarios to the common corpus. The runner selects P01–P13 or P15–P24 per
 invocation. Broader support requires
 implementing and validating each additional pattern.
 
@@ -319,3 +319,12 @@ P08/P11/P17/P18/P21/P23 use the same 21 batches. They are partial patterns, so m
 The P12/P15 profiles are partial grouped alternatives. They share the existing corpus and omit match-at-offset. Their source manifests pin exact decoded strings and HF settings; `-verify-only` generates live reference matches and splits before comparing every request.
 
 P22 uses the shared 21 batches and is partial: its unmatched numeric/control gaps require distinct match-only and isolated Split outputs. The match-at diagnostic is omitted. A default complete run contains 1,500 samples including separate compilation timing.
+
+P10 adds a shared `decimal` workload for successful anchored decimal remainders,
+bringing the common corpus to 22 batches. The mixed `synthetic` workload also
+includes Nd boundary neighbors, short exhaustive decimal contexts and anchored
+failures. These inputs are available to every pattern. P10 is partial, so the
+match-at diagnostic is omitted; a full run has 1,570 samples (seven scan engines
+over 22 batches plus three compile engines, ten repetitions each). Natural text
+mostly exercises rejection and UTF-8 validation; report successful decimal
+subjects separately. Previous completed reports retain their original 21 batches.

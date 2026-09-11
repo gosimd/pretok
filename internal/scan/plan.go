@@ -12,8 +12,13 @@ type Plan struct {
 func (p *Plan) Match(src string, pos int) int { return p.match(src, pos) }
 func (p *Plan) HasSearch() bool               { return p.find != nil }
 
-// Find returns the next match or len(src), len(src). Requires HasSearch().
-func (p *Plan) Find(src string, pos int) (int, int) { return p.find(src, pos) }
+// Find receives the entire subject and the start of this search (the previous
+// match's end, initially zero). An anchored plan may fail without searching
+// later positions. Failure returns len(src), len(src) and exhausts the cursor.
+// Requires HasSearch(). Do not slice src or advance searchStart to retry a plan.
+func (p *Plan) Find(src string, searchStart int) (int, int) {
+	return p.find(src, searchStart)
+}
 
 // ASCIITriples builds P02 using the cursor's shared search past unmatched scalars;
 // Split owns preserving maximal gaps, including short digit-run residues.

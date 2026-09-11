@@ -1,0 +1,32 @@
+{
+  "pattern_id": "P10",
+  "pattern": "\\A\\p{Nd}{1,2}(?=\\p{Nd}{3}+\\z)",
+  "pattern_sha256": "5c4760901abddbd903de5db948c2b00cf8f3de2b6872fa9ddb234101c41c43f9",
+  "source": {
+    "model_id": "arcee-ai/Trinity-Large-Thinking",
+    "revision": "dc6a99b6b74202880e31491a445a94884c97890c",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/arcee-ai/Trinity-Large-Thinking/blob/dc6a99b6b74202880e31491a445a94884c97890c/tokenizer.json",
+    "sha256": "c5a93d847b4d3a1da95e9527c30ec10144f63a823e9feec98570274980754897",
+    "json_pointer": "/pre_tokenizer/pretokenizers/2/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "quantifiers": "In the pinned HF/Oniguruma syntax, Nd{3}+ repeats groups of three; it is not a possessive exact-three quantifier.",
+  "validation": "Live native HF matches and isolated splits on the shared corpus; offline RE2 equivalent and pinned Nd table; no stored output arrays.",
+  "oracle_native_sha256": "899b244f19f1ddd6506c45ea0f7163f38952f2a552272a687a6ef4b9ddcc7327",
+  "tables_sha256": "86a09cea7efa3b45164bfac1d01833b16b18eb80b9ea8b64c88788628874f7ae",
+  "generator_sha256": "1e8d6cc475b4ee4ec5669642e5aa4696fd013b6b4251b6ec09157ff98790f9db"
+}

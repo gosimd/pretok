@@ -85,3 +85,10 @@ The P08/P11/P17/P18/P21/P23 directories contain only provenance manifests. Their
 P12/P15 store provenance manifests only. Their reference matches and isolated splits are generated live. Offline tests compare ordered alternatives using RE2 with explicit pinned Hangul ranges, exercise group transitions and overlaps, and cover every valid scalar. Run `benchmark/prepare/grouped.py` with tokenizers==0.22.2 to verify Hangul extraction without storing oracle outputs.
 
 P22 stores a provenance manifest and hashes of its reproducible P|S table generator, generated table and pinned HF native wheel. `generate_punctuation_tables.py` regenerates membership from all valid scalars with tokenizers==0.22.2; it stores no reference output arrays. The common native gate generates P22 matches and isolated splits live.
+
+P10 stores source provenance and hashes of the pinned Nd table and its generator.
+Run `python testdata/patterns/generate_decimal_tables.py` from the root with
+tokenizers==0.22.2 to regenerate all 71 ranges. No output arrays are stored.
+Offline tests compare captured HF boundaries and an independent RE2 whole-subject
+expression with a captured prefix. The shared native gate checks exact anchors,
+repeated triples, Nd membership and UTF-8 byte offsets with live references.

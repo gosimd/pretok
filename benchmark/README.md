@@ -1,8 +1,8 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P09, P11–P13, and P15–P24 regexes. It contains five approximately
-1 MiB natural text pools and a separate synthetic diagnostic pool. See
+and HF Tokenizers 0.22.2 for the exact P01–P13 and P15–P24 regexes. It contains five approximately
+1 MiB natural text pools and shared synthetic diagnostic pools. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
 The [P01 Apple M5 report](results/P01/2026-09-10-apple-m5-scalar/REPORT.md)
@@ -340,3 +340,36 @@ exactly on 141,415 shared requests before timing. P22 is partial, so match-at-of
 is omitted. Only completed reports are published; no corpus reference output
 arrays are stored. The implementation uses the existing exact-set consumption,
 pinned L|M classes and whitespace logic, plus the pinned positive P|S union.
+
+
+## P10: anchored decimal remainder
+
+The [P10 report](results/P10/2026-09-11-apple-m5-scalar/REPORT.md) contains 1,570
+samples: ten repetitions of at least 500 ms for all 22 shared batches and separate
+compilation measurements. Apple M5, scalar Go 1.27.0, Rust 1.90.0, HF Tokenizers
+0.22.2 and onig crate 6.5.1; one worker, public UTF-8 validation included.
+
+Reused Split throughput in decimal MB/s. Baseline/pretok ratios below one favor
+the baseline. Natural-text rows use 4 KiB requests; decimal requests vary in size.
+
+| Workload | pretok MB/s | Oniguruma / pretok | HF Split / pretok |
+| --- | ---: | ---: | ---: |
+| English | 47309.7 | 2.83× | 103.51× |
+| Russian | 1104.2 | 0.80× | 3.30× |
+| Japanese | 2468.1 | 1.25× | 6.41× |
+| Arabic | 1031.6 | 0.80× | 3.12× |
+| Chinese | 2501.9 | 1.29× | 6.54× |
+| Successful decimal subjects | 491.7 | 1.50× | 2.62× |
+
+The decimal workload contains 110 subjects of 4–4,097 Nd scalars, all matching
+P10, across five digit layouts. Every natural-text request has zero P10 matches;
+those results predominantly measure rejection and UTF-8 validation. The roughly
+25% Russian/Arabic loss against Oniguruma is retained. High English throughput
+does not describe general pre-tokenization. On the five 4 KiB natural workloads,
+ratios of summed batch medians are 0.96× Oniguruma/pretok and 4.97× HF/pretok.
+
+Cursor and reused Split allocate no memory. The full report includes fresh Split,
+compile cost, every language/size and IQR. Expected boundaries were generated live
+and compared on all 162,794 requests; all 23 supported patterns passed the expanded
+corpus gate. No new reference output arrays or intermediate measurements are
+published. P14 and P25 remain unsupported.

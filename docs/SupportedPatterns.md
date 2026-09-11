@@ -1,9 +1,9 @@
 # Supported patterns
 
-This is the documentation registry of all **22 supported exact regex strings**,
+This is the documentation registry of all **23 supported exact regex strings**,
 ordered by corpus ID. The [runtime registry](../internal/compile/registry.go)
 selects these expressions; the [25-string corpus](../testdata/corpus_patterns.json)
-also contains unsupported targets P10, P14 and P25. IDs are stable.
+also contains unsupported targets P14 and P25. IDs are stable.
 
 `regexp(r"...")` is documentation notation for the string passed to `pretok.Compile`,
 not an additional public API. Raw string literals preserve every backslash.
@@ -19,7 +19,7 @@ A tokenizer can use several listed patterns in a Sequence. Recognizing its regex
 does not imply support for its entire tokenizer pipeline; see [Regexp](Regexp.md)
 for matching, gap handling and compatibility contracts.
 
-Jump to: [P01](#p01) · [P02](#p02) · [P03](#p03) · [P04](#p04) · [P05](#p05) · [P06](#p06) · [P07](#p07) · [P08](#p08) · [P09](#p09) · [P11](#p11) · [P12](#p12) · [P13](#p13) · [P15](#p15) · [P16](#p16) · [P17](#p17) · [P18](#p18) · [P19](#p19) · [P20](#p20) · [P21](#p21) · [P22](#p22) · [P23](#p23) · [P24](#p24).
+Jump to: [P01](#p01) · [P02](#p02) · [P03](#p03) · [P04](#p04) · [P05](#p05) · [P06](#p06) · [P07](#p07) · [P08](#p08) · [P09](#p09) · [P10](#p10) · [P11](#p11) · [P12](#p12) · [P13](#p13) · [P15](#p15) · [P16](#p16) · [P17](#p17) · [P18](#p18) · [P19](#p19) · [P20](#p20) · [P21](#p21) · [P22](#p22) · [P23](#p23) · [P24](#p24).
 
 ## P01
 
@@ -146,6 +146,21 @@ Tokenizer examples:
 - [stabilityai/stablelm-2-1_6b](https://huggingface.co/stabilityai/stablelm-2-1_6b/blob/f499ead74c53749bd93cebc6ce8bc0d7bdf1eaef/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
 - [stabilityai/stablelm-2-1_6b-chat](https://huggingface.co/stabilityai/stablelm-2-1_6b-chat/blob/f3fe67057c2789ae1bb1fe42b038da99840d4f13/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
 - [stabilityai/stablelm-2-zephyr-1_6b](https://huggingface.co/stabilityai/stablelm-2-zephyr-1_6b/blob/2f275b1127d59fc31e4f7c7426d528768ada9ea4/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
+
+## P10
+
+```python
+regexp(r"\A\p{Nd}{1,2}(?=\p{Nd}{3}+\z)")
+```
+
+[Exact string and validation provenance](../testdata/patterns/P10/manifest.json).
+[Anchor and quantifier semantics](ContextualNumbers.md#p10-semantics).
+
+Tokenizer examples:
+
+- [arcee-ai/Trinity-Large-Thinking](https://huggingface.co/arcee-ai/Trinity-Large-Thinking/blob/dc6a99b6b74202880e31491a445a94884c97890c/tokenizer.json) — `/pre_tokenizer/pretokenizers/2/pattern/Regex`.
+- [arcee-ai/Trinity-Mini](https://huggingface.co/arcee-ai/Trinity-Mini/blob/cdb81e8130815fec299cccc8f8700004b8366e1e/tokenizer.json) — `/pre_tokenizer/pretokenizers/2/pattern/Regex`.
+- [arcee-ai/Trinity-Nano-Base](https://huggingface.co/arcee-ai/Trinity-Nano-Base/blob/923a95dbba013c78c4fd6dbc6bce31eea553da7c/tokenizer.json) — `/pre_tokenizer/pretokenizers/2/pattern/Regex`.
 
 ## P11
 

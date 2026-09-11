@@ -4,7 +4,7 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports the 22 exact strings in the
+**Status:** the [Go API](../regexp.go) supports the 23 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
 expressions and tokenizer examples. Unregistered strings, including equivalent
 spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
@@ -380,3 +380,12 @@ categories cannot replace this table without changing the contract.
 
 Cursor skips unmatched gaps and Split preserves maximal gaps. Public API,
 UTF-8 validation, byte offsets and destination ownership are unchanged.
+
+## P10: anchored decimal remainder
+
+[P10](SupportedPatterns.md#p10) selects a leading group of one or two Nd scalars
+only when the entire subject consists of that prefix and one or more triples.
+`1234567` has one match, `1`; `123456`, `x1234` and `1234` followed by LF have none.
+The lookahead leaves the rest as a single unmatched Split gap. See
+[contextual decimal plans](ContextualNumbers.md) for search context, the pinned
+meaning of `{3}+`, Unicode membership and the P14/P25 extension boundary.

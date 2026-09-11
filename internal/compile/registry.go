@@ -105,7 +105,16 @@ const PunctuationWordsPattern = "[!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~][A-
 
 var punctuationWords = scan.PunctuationWords()
 
+// InitialDecimalRemainderPattern is the exact anchored corpus P10 string.
+const InitialDecimalRemainderPattern = `\A\p{Nd}{1,2}(?=\p{Nd}{3}+\z)`
+
+var initialDecimalRemainder = scan.InitialDecimalRemainder()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == InitialDecimalRemainderPattern {
+		return &initialDecimalRemainder, true
+	}
+
 	if pattern == PunctuationWordsPattern {
 		return &punctuationWords, true
 	}

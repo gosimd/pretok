@@ -148,6 +148,13 @@
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": false
     },
+    "P10": {
+      "pattern": "\\A\\p{Nd}{1,2}(?=\\p{Nd}{3}+\\z)",
+      "pattern_sha256": "5c4760901abddbd903de5db948c2b00cf8f3de2b6872fa9ddb234101c41c43f9",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
     "P23": {
       "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
       "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
@@ -156,7 +163,7 @@
       "full_coverage": false
     }
   },
-  "generator_sha256": "f2a771f0fcb8f3047d9f24c266a9d6a6e0877d9d0aceee166ad7acbf657a8956",
+  "generator_sha256": "7843b7e7b99e367b9bac75e86eb11ad8a5a24a7cfdd4189206c5e5be98677262",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -354,18 +361,37 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "48e957c71574d7878aca490d6d3ea42f9877834ebfe403186bc80042f26b4fee",
-      "compressed_sha256": "4f610e9382718dcd4cceb2782b5d97b4a8e53b4b1587273bae52764e090f1e34",
-      "bytes": 2920018,
-      "scalars": 1513379,
-      "ascii_fraction": 0.23781120527339214,
+      "sha256": "d9f81b0f32e9b7a86e4a14c989575cab07b2b3f2fbe141b097c4475c1cfe3b86",
+      "compressed_sha256": "3d65264e9f69b2ba0fe71d7904586d2919c7547754b65fd9274cab74eba1c3db",
+      "bytes": 4176912,
+      "scalars": 2035588,
+      "ascii_fraction": 0.20181631789226107,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "928c1b6d38e3e6a2957cf8d1b1f1a648cd435b59226021957c05383f2dcc475b",
-          "requests": 119511
+          "sha256": "45b5cd7dfc957ac7371737872088ab3736f1fd51a04c9ce431c86e21fbe68b01",
+          "requests": 140780
+        }
+      ]
+    },
+    {
+      "id": "decimal",
+      "kind": "synthetic",
+      "file": "decimal.txt.gz",
+      "sha256": "68fa22cfd030e9e61a6e1b6b0b32b4282c2c5123594133320cd8e692451922cb",
+      "compressed_sha256": "fe2c6596dd0be3fab3adf908cc34fa0330e87d9cc8c5a7df86d8301593b22d12",
+      "bytes": 166144,
+      "scalars": 66465,
+      "ascii_fraction": 0.1000517623266564,
+      "source_file": null,
+      "batches": [
+        {
+          "size": 0,
+          "file": "decimal-0.json",
+          "sha256": "b6a4da593b5496704df1003fbaa2e5bc1eaba5663f76aa5e44f4b2d255f7dac9",
+          "requests": 110
         }
       ]
     }
