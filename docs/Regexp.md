@@ -4,7 +4,7 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports the 23 exact strings in the
+**Status:** the [Go API](../regexp.go) supports the 24 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
 expressions and tokenizer examples. Unregistered strings, including equivalent
 spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
@@ -388,4 +388,12 @@ only when the entire subject consists of that prefix and one or more triples.
 `1234567` has one match, `1`; `123456`, `x1234` and `1234` followed by LF have none.
 The lookahead leaves the rest as a single unmatched Split gap. See
 [contextual decimal plans](ContextualNumbers.md) for search context, the pinned
-meaning of `{3}+`, Unicode membership and the P14/P25 extension boundary.
+meaning of `{3}+`, Unicode membership P14 continuation and the planned P25 extension.
+
+## P14: consecutive decimal triples
+
+[P14](SupportedPatterns.md#p14) consumes complete Nd triples starting at byte zero
+and continuing only at the previous match's end. `123x456` yields only `123`;
+Split retains `x456` as one gap. Failed partial triples never trigger a search
+for later digits. The plan reuses P10's bounded decimal scanner, pinned class
+and existing cursor exhaustion. See [continuation semantics](ContextualNumbers.md#p14-semantics).

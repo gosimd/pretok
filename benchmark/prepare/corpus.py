@@ -111,7 +111,7 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument('--output',type=Path,default=ROOT/'benchmark/corpus');ap.add_argument('--offline',action='store_true');args=ap.parse_args()
     dest=args.output;dest.mkdir(parents=True,exist_ok=True)
     patterns={}
-    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06'),('P11','testdata/patterns/P11'),('P21','testdata/patterns/P21'),('P17','testdata/patterns/P17'),('P18','testdata/patterns/P18'),('P08','testdata/patterns/P08'),('P12','testdata/patterns/P12'),('P15','testdata/patterns/P15'),('P22','testdata/patterns/P22'),('P10','testdata/patterns/P10'),('P23','testdata/patterns/P23')]:
+    for ident,directory in [('P01','testdata/patterns/P01'),('P02','testdata/patterns/P02'),('P03','testdata/patterns/P03'),('P04','testdata/patterns/P04'),('P05','testdata/qwen'),('P09','testdata/patterns/P09'),('P13','testdata/patterns/P13'),('P16','testdata/patterns/P16'),('P07','testdata/patterns/P07'),('P24','testdata/patterns/P24'),('P20','testdata/patterns/P20'),('P19','testdata/patterns/P19'),('P06','testdata/patterns/P06'),('P11','testdata/patterns/P11'),('P21','testdata/patterns/P21'),('P17','testdata/patterns/P17'),('P18','testdata/patterns/P18'),('P08','testdata/patterns/P08'),('P12','testdata/patterns/P12'),('P15','testdata/patterns/P15'),('P22','testdata/patterns/P22'),('P10','testdata/patterns/P10'),('P14','testdata/patterns/P14'),('P23','testdata/patterns/P23')]:
         fixture_dir=ROOT/directory
         fixture=json.loads((fixture_dir/'manifest.json').read_text())
         patterns[ident]={key:fixture[key] for key in ['pattern','pattern_sha256']}
@@ -250,6 +250,9 @@ def main():
     # Anchored decimal rules: Nd boundaries, mixed-width digits, exact EOF,
     # short exhaustive inputs and long failed lookahead. Shared by all patterns.
     decimal_inputs=set()
+    # Continuation must stop after any gap, including a failed partial triple.
+    for prefix,gap,tail in itertools.product(['123','1234','12345','１２٣٤𝟝6'],['x','\n','²','\x00'],['456','١２𝟛456']):
+        decimal_inputs.add(prefix+gap+tail)
     for n in range(1,6):
         decimal_inputs.update(''.join(chars) for chars in itertools.product(['1','١','１','𝟙','²','x','\n'],repeat=n))
     for lo,hi in re.findall(r'\{0x([0-9A-Fa-f]+), 0x([0-9A-Fa-f]+)\}',(ROOT/'internal/scan/decimal_tables.go').read_text()):

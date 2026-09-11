@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01–P13 and P15–P24, with five pinned natural-language pools,
+**Status:** implemented for scalar P01–P24, with five pinned natural-language pools,
 two shared synthetic pools, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go
@@ -13,7 +13,7 @@ The benchmark answers two separate questions:
 2. How much does the public regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
-Select P01–P13 or P15–P24 with `-pattern`. Each run uses one exact supported string and its
+Select P01–P24 with `-pattern`. Each run uses one exact supported string and its
 own [P01](../testdata/patterns/P01/manifest.json),
 [P02](../testdata/patterns/P02/manifest.json),
 [P03](../testdata/patterns/P03/manifest.json),
@@ -310,7 +310,7 @@ selected completed results in Git, keyed by exact regex identity rather than
 model name. All patterns share text pools, request files, and one corpus manifest.
 Those files store only inputs. Each run generates reference spans for the chosen
 pattern in memory before checking all results and starting timers.
-Add any new scenarios to the common corpus. The runner selects P01–P13 or P15–P24 per
+Add any new scenarios to the common corpus. The runner selects P01–P24 per
 invocation. Broader support requires
 implementing and validating each additional pattern.
 
@@ -328,3 +328,9 @@ match-at diagnostic is omitted; a full run has 1,570 samples (seven scan engines
 over 22 batches plus three compile engines, ten repetitions each). Natural text
 mostly exercises rejection and UTF-8 validation; report successful decimal
 subjects separately. Previous completed reports retain their original 21 batches.
+
+P14 reuses all 22 shared batches, including successful decimal inputs. Its
+additional synthetic cases place non-digits after complete or partial triples
+and before later digit runs. P14 is partial, so a full run also has 1,570 samples
+and omits match-at-offset. Natural-text matches may occur only at the beginning
+of each request; preserve match counts when interpreting high rejection throughput.

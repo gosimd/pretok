@@ -1,8 +1,7 @@
 # Contextual decimal patterns
 
 P10, P14 and P25 share the Unicode `Nd` class, but need different search rules.
-P10 is implemented. P14 and P25 remain implementation targets, not registered
-aliases. The public `Regexp`, `Cursor` and `Split` contracts stay unchanged.
+P10 and P14 are implemented. P25 remains an implementation target. The public `Regexp`, `Cursor` and `Split` contracts stay unchanged.
 
 ## Context and ownership
 
@@ -20,7 +19,7 @@ a new subject; retaining boundaries between Sequence stages belongs to the calle
 | Pattern | Search rule | Per-input data |
 | --- | --- | --- |
 | P10 | Only match at byte zero after checking the entire subject | Decimal run end and scalar count, local to the first search |
-| P14, planned | Consume three Nd scalars at the current search start; stop on failure | Existing cursor position is sufficient |
+| P14 | Consume three Nd scalars at the current search start; stop on failure | Existing cursor position is sufficient |
 | P25, planned | Find a decimal run and select groups aligned from its right end, preserving alternative priority | Cache the run end in cursor-owned internal state to avoid rescanning the suffix for every group |
 
 The reusable scalar component is `scanDecimals(src, pos, limit)`, returning
@@ -28,8 +27,8 @@ The reusable scalar component is `scanDecimals(src, pos, limit)`, returning
 A zero limit scans the whole run; a positive limit consumes at most that many
 digits. It distinguishes `Nd` from both ASCII `[0-9]` and the broader `N` class.
 
-P10 uses local metadata, so it needs no additional cursor fields or stateful plan
-hook. When implementing P25, place its cached run boundary in an internal value
+P10 and P14 use local metadata, so neither needs additional cursor fields or
+a stateful plan hook. When implementing P25, place its cached run boundary in an internal value
 owned by each cursor, never in the shared immutable plan. Cursor copies must
 have independent progress and caches. Add that execution state only when P25
 uses it; the public API and the input/search-start distinction above remain fixed.
@@ -62,6 +61,38 @@ Only the first one or two scalars are decoded again to locate the prefix endpoin
 Public entry points still validate all UTF-8 input before scanning, even on an
 immediate anchor/class failure.
 
+## P14 semantics
+
+The [exact P14 string](SupportedPatterns.md#p14) matches three Nd scalars at the
+current search start. On the first call, both alternatives select byte zero.
+Later calls continue at the previous match's end through `\G`. If fewer than
+three consecutive decimal digits remain at that position, iteration ends. A
+later digit run after a gap must never restart this search.
+
+`ConsecutiveDecimalTriples` calls the existing `scanDecimals(src, searchStart, 3)`.
+A complete triple returns its byte boundaries; an incomplete triple returns the
+existing search-failure sentinel. The cursor owns continuation and exhaustion,
+while Split preserves the entire remaining suffix as one gap.
+
+| Input | Cursor matches | Isolated Split pieces |
+| --- | --- | --- |
+| `1234567` | `123`, `456` | `123`, `456`, `7` |
+| `123x456` | `123` | `123`, `x456` |
+| `1234x567` | `123` | `123`, `4x567` |
+| `x123456` | none | `x123456` |
+| `１２٣٤𝟝67` | `１２٣` (bytes 0–8), `٤𝟝6` (8–15) | those two triples and `7` |
+
+This differs from P02/P07, which search past unmatched gaps, and from P10, which
+checks exact EOF and returns only a leading remainder. P14 does not require that
+the whole subject consists of digits. No new Unicode tables, mutable plan state,
+public methods or cursor fields are introduced.
+
+[P14 provenance](../testdata/patterns/P14/manifest.json) pins its source and the
+hash of the shared P10 Unicode profile. Offline tests include captured HF byte
+boundaries, an independent RE2 match list restricted to its contiguous prefix,
+all-scalar contexts, partial triples, EOF, cursor copies and failed continuation.
+The live benchmark gate compares HF matches and isolated splits before timing.
+
 ## Unicode and evidence
 
 [P10 provenance](../testdata/patterns/P10/manifest.json) pins the tokenizer source,
@@ -76,7 +107,7 @@ destination reuse and malformed UTF-8. The common benchmark pipeline generates
 HF matches and isolated splits in memory and compares every Go/Oniguruma boundary.
 No new reference output arrays are stored.
 
-The shared `decimal` diagnostic workload exercises successful P10 matches on
+The shared `decimal` diagnostic workload exercises successful P10/P14 matches on
 ASCII, Arabic-Indic, fullwidth, mathematical and mixed-width decimal subjects.
 Report it separately from natural text, where P10 mostly rejects the subject and
 throughput can predominantly measure UTF-8 validation. Neither is a full tokenizer

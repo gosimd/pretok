@@ -155,6 +155,13 @@
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": false
     },
+    "P14": {
+      "pattern": "\\A\\p{Nd}{3}|\\G\\p{Nd}{3}",
+      "pattern_sha256": "83f2d093b1edc3e2b898cb45fc2532e838649447649e4c26f9662b8081b609b7",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
     "P23": {
       "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
       "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
@@ -163,7 +170,7 @@
       "full_coverage": false
     }
   },
-  "generator_sha256": "7843b7e7b99e367b9bac75e86eb11ad8a5a24a7cfdd4189206c5e5be98677262",
+  "generator_sha256": "039363c98feb27df0797518198ebd421813aa39a6378e4e3853044cd00d96f5d",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -361,18 +368,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "d9f81b0f32e9b7a86e4a14c989575cab07b2b3f2fbe141b097c4475c1cfe3b86",
-      "compressed_sha256": "3d65264e9f69b2ba0fe71d7904586d2919c7547754b65fd9274cab74eba1c3db",
-      "bytes": 4176912,
-      "scalars": 2035588,
-      "ascii_fraction": 0.20181631789226107,
+      "sha256": "50bc816b55bc3965de175f58ff5b09d022a8e2251a6348687a9597c1b3c40476",
+      "compressed_sha256": "df186ccc34a1fd258657f5bf64740f6526a9b4b70887de923145f0caca6dbec8",
+      "bytes": 4177408,
+      "scalars": 2035908,
+      "ascii_fraction": 0.2018459772184091,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "45b5cd7dfc957ac7371737872088ab3736f1fd51a04c9ce431c86e21fbe68b01",
-          "requests": 140780
+          "sha256": "b85e71a6ba558d7405a8c5c42a3d1dcf4a2132c3c333cd95dc19495e934565bb",
+          "requests": 140812
         }
       ]
     },

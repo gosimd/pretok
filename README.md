@@ -6,7 +6,7 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar support for 23 exact regex strings. See the
+**Status:** scalar support for 24 exact regex strings. See the
 [supported-pattern registry](docs/SupportedPatterns.md) for IDs, exact expressions
 and tokenizer examples. `Compile`, `Cursor`, and `Split` are checked against pinned
 Hugging Face references. No SIMD backend is implemented.
@@ -272,4 +272,8 @@ for separate Oniguruma and HF Split comparisons.
 The [P10 scalar report](benchmark/results/P10/2026-09-11-apple-m5-scalar/REPORT.md)
 separates successful decimal subjects from natural-text rejection, including
 regressions against Oniguruma. See [contextual decimal plans](docs/ContextualNumbers.md)
-for P10's implementation and the planned P14/P25 extension boundary.
+for P10/P14 implementations and the planned P25 extension boundary.
+
+The [P14 scalar report](benchmark/results/P14/2026-09-11-apple-m5-scalar/REPORT.md)
+measures consecutive decimal triples on the shared corpus, with separate results
+for successful grouping and natural-text rejection.

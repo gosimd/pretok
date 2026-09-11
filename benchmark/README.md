@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P13 and P15–P24 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01–P24 regexes. It contains five approximately
 1 MiB natural text pools and shared synthetic diagnostic pools. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -372,4 +372,36 @@ Cursor and reused Split allocate no memory. The full report includes fresh Split
 compile cost, every language/size and IQR. Expected boundaries were generated live
 and compared on all 162,794 requests; all 23 supported patterns passed the expanded
 corpus gate. No new reference output arrays or intermediate measurements are
-published. P14 and P25 remain unsupported.
+published. P14 and P25 were unsupported at the time of that run.
+
+
+## P14: consecutive decimal triples
+
+The [P14 report](results/P14/2026-09-11-apple-m5-scalar/REPORT.md) contains 1,570
+samples: ten repetitions of at least 500 ms over all 22 shared batches and
+separate compilation timing. Apple M5, scalar Go 1.27.0, Rust 1.90.0, HF Tokenizers
+0.22.2, onig crate 6.5.1, one worker. Public UTF-8 validation is included.
+
+Reused Split throughput in decimal MB/s; baseline/pretok ratios above one favor
+pretok. Natural rows use 4 KiB requests; decimal subjects have variable lengths.
+
+| Workload | pretok MB/s | Oniguruma / pretok | HF Split / pretok |
+| --- | ---: | ---: | ---: |
+| English, 4 KiB | 48237.7 | 420.28× | 525.56× |
+| Russian, 4 KiB | 1099.7 | 6.29× | 8.82× |
+| Japanese, 4 KiB | 2464.1 | 9.33× | 14.61× |
+| Arabic, 4 KiB | 1008.7 | 5.98× | 8.31× |
+| Chinese, 4 KiB | 2515.6 | 9.90× | 15.32× |
+| Successful decimal subjects | 421.6 | 6.33× | 11.40× |
+
+The decimal pool contains 110 successful subjects of 4–4,097 Nd scalars, yielding
+22,100 matches and 22,210 isolated pieces. Natural texts mostly measure early
+termination and UTF-8 validation; their high throughput is not decimal grouping
+throughput. The report includes match counts to make this workload shape explicit.
+Ratios of summed 4 KiB language batch medians are
+10.31× Oniguruma/pretok and 14.38× HF/pretok.
+
+Cursor and reused Split allocate no memory. Fresh allocations, compile cost and
+all sizes are retained in the full report. All 162,826 requests were verified
+against live HF/Oniguruma references for all 24 supported patterns. Intermediate
+runs remain ignored; only this completed P14 run is published. P25 remains unsupported.

@@ -110,7 +110,16 @@ const InitialDecimalRemainderPattern = `\A\p{Nd}{1,2}(?=\p{Nd}{3}+\z)`
 
 var initialDecimalRemainder = scan.InitialDecimalRemainder()
 
+// ConsecutiveDecimalTriplesPattern is the exact anchored corpus P14 string.
+const ConsecutiveDecimalTriplesPattern = `\A\p{Nd}{3}|\G\p{Nd}{3}`
+
+var consecutiveDecimalTriples = scan.ConsecutiveDecimalTriples()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == ConsecutiveDecimalTriplesPattern {
+		return &consecutiveDecimalTriples, true
+	}
+
 	if pattern == InitialDecimalRemainderPattern {
 		return &initialDecimalRemainder, true
 	}

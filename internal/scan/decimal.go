@@ -47,3 +47,18 @@ func initialDecimalRemainder(src string, searchStart int) (int, int) {
 	}
 	return len(src), len(src)
 }
+
+// ConsecutiveDecimalTriples builds P14. Initially both anchors select byte zero;
+// after a match only \G selects the current search start. A failed triple must
+// end iteration, never search for another digit run beyond a gap.
+func ConsecutiveDecimalTriples() Plan {
+	return Plan{find: consecutiveDecimalTriples}
+}
+
+func consecutiveDecimalTriples(src string, searchStart int) (int, int) {
+	run := scanDecimals(src, searchStart, 3)
+	if run.Count == 3 {
+		return searchStart, run.End
+	}
+	return len(src), len(src)
+}

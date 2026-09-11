@@ -92,3 +92,9 @@ tokenizers==0.22.2 to regenerate all 71 ranges. No output arrays are stored.
 Offline tests compare captured HF boundaries and an independent RE2 whole-subject
 expression with a captured prefix. The shared native gate checks exact anchors,
 repeated triples, Nd membership and UTF-8 byte offsets with live references.
+
+P14 stores source provenance and the hash of the shared P10 Unicode profile,
+without a new class table or expected-output arrays. Offline tests use captured
+HF offsets and RE2 triples restricted to a contiguous prefix. The live native
+gate covers successful continuation, partial triples and failure before later
+digit runs. Cursor copies, reuse and malformed UTF-8 use the shared API tests.

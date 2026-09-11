@@ -43,6 +43,7 @@ sharing one scanner plan need separately validated measurements.
 
 | P22 (ASCII-prefixed words and P\|S runs) | Scalar, shared classes and whitespace | Apple M5 | [2026-09-11](P22/2026-09-11-apple-m5-scalar/REPORT.md) |
 | P10 (anchored Nd remainder) | Scalar, decimal run metadata | Apple M5 | [2026-09-11](P10/2026-09-11-apple-m5-scalar/REPORT.md) |
+| P14 (consecutive Nd triples) | Scalar, shared bounded decimal scanner | Apple M5 | [2026-09-11](P14/2026-09-11-apple-m5-scalar/REPORT.md) |
 
 Each full P01/P05/P09/P13/P24/P20/P19/P06 run contains 1,710 samples: ten samples of at least 500 ms per measurement,
 using Go 1.27.0, Rust 1.90.0, HF Tokenizers 0.22.2, and onig 6.5.1. Its original
@@ -51,7 +52,7 @@ P16/P07/P08/P11/P12/P15/P17/P18/P21/P22/P23 runs contain 1,500 samples each: the
 because these patterns can leave gaps. Their Cursor and Split outputs are
 verified independently before timing.
 
-P02/P03/P04 are also implemented; P14 and P25 remain unsupported.
+P02/P03/P04 are also implemented; only P25 remains unsupported.
 P02/P03/P04 have no published full performance runs yet.
 
 The [P05 refactor regression check](P05/2026-09-10-apple-m5-scalar-regression/REPORT.md)
@@ -113,3 +114,9 @@ separate compilation measurements. All 162,794 requests were verified against
 live HF/Oniguruma references. Its shared decimal workload measures successful
 matches separately from natural-text rejection. The report retains the
 Russian/Arabic regressions against Oniguruma and all source/corpus fingerprints.
+
+The completed P14 run contains 1,570 samples over the same 22 shared batches,
+with 32 additional continuation-failure cases in the synthetic pool. All 162,826
+requests passed live reference comparison for all 24 supported patterns. Its
+report separates successful decimal grouping from natural-text rejection and
+preserves raw samples, variation, allocations and source/corpus fingerprints.

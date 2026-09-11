@@ -57,3 +57,8 @@ subjects of 4–4,097 scalars, all with a nonzero remainder modulo three. It cov
 ASCII, Arabic-Indic, fullwidth, mathematical and mixed-width digits. This makes
 successful P10 matches measurable separately from natural-text rejection. The
 corpus now has seven pools and 22 batches, all available to every pattern.
+
+P14 adds 32 continuation-failure cases to the common synthetic pool: complete or
+partial triples followed by an ASCII letter, LF, NUL or a non-decimal number,
+then another digit run. It reuses the existing decimal pool and all 22 batches.
+References are generated live for every selected pattern.
