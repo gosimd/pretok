@@ -1,7 +1,7 @@
 # Cross-engine benchmark
 
 The offline suite compares the public scalar `pretok` API with native Oniguruma
-and HF Tokenizers 0.22.2 for the exact P01–P24 regexes. It contains five approximately
+and HF Tokenizers 0.22.2 for the exact P01–P25 regexes. It contains five approximately
 1 MiB natural text pools and shared synthetic diagnostic pools. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).
 
@@ -404,4 +404,34 @@ Ratios of summed 4 KiB language batch medians are
 Cursor and reused Split allocate no memory. Fresh allocations, compile cost and
 all sizes are retained in the full report. All 162,826 requests were verified
 against live HF/Oniguruma references for all 24 supported patterns. Intermediate
-runs remain ignored; only this completed P14 run is published. P25 remains unsupported.
+runs remain ignored; only this completed P14 run is published. P25 was unsupported at the time of that run.
+
+
+## P25: right-aligned decimal groups
+
+The [P25 report](results/P25/2026-09-11-apple-m5-scalar/REPORT.md) contains 1,570
+samples over all 22 shared batches: ten repetitions of at least 500 ms and separate
+compile timing. Apple M5, scalar Go 1.27.0, Rust 1.90.0, HF Tokenizers 0.22.2,
+onig crate 6.5.1, one worker; public UTF-8 validation is timed.
+
+Reused Split throughput in decimal MB/s; ratios above one favor pretok.
+
+| Workload | pretok MB/s | Oniguruma / pretok | HF Split / pretok |
+| --- | ---: | ---: | ---: |
+| English, 4 KiB | 467.6 | 5.03× | 6.54× |
+| Russian, 4 KiB | 266.5 | 2.20× | 3.00× |
+| Japanese, 4 KiB | 432.9 | 2.58× | 3.83× |
+| Arabic, 4 KiB | 253.2 | 2.11× | 2.84× |
+| Chinese, 4 KiB | 409.4 | 2.57× | 3.76× |
+| Decimal subjects | 285.7 | 236.78× | 237.57× |
+
+The 110 decimal subjects have selected lengths of 4–4,097 Nd scalars and yield
+220 matches. P25 searches through natural-text gaps, so these rows do not
+represent the immediate anchored rejection measured for P10/P14. Sum-of-medians
+4 KiB ratios are 2.71× Oniguruma/pretok and 3.74× HF/pretok.
+
+Cursor and reused Split allocate no memory. The report includes a scoped
+before/after check of the extra cursor state: short P14 rejection rises from
+10.22 to 11.78 ns, while the other selected P01/P05/P14 medians change by less
+than 1%. All 25 patterns passed live comparison on 163,066 shared requests.
+Only this completed P25 run is published; intermediate runs remain ignored.

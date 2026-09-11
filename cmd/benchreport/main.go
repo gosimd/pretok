@@ -151,7 +151,7 @@ func main() {
 	}
 }
 func run() error {
-	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P24")
+	patternID := flag.String("pattern", "P05", "exact corpus pattern ID: P01–P25")
 	root := flag.String("root", ".", "repository root")
 	corpus := flag.String("corpus", "benchmark/corpus", "corpus path relative to root")
 	reference := flag.String("native", "benchmark/native/target/release/pretok-reference", "native executable path relative to root")
@@ -193,6 +193,8 @@ func run() error {
 		expectedPattern = compile.CaseWordsPattern
 	case "P09":
 		expectedPattern = compile.QwenLiteralNewlinesPattern
+	case "P25":
+		expectedPattern = compile.RightAlignedDecimalsPattern
 	case "P14":
 		expectedPattern = compile.ConsecutiveDecimalTriplesPattern
 	case "P10":

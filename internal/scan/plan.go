@@ -5,19 +5,30 @@ package scan
 // Plan selects immutable matching code. It owns no per-input execution state.
 // Most plans match at a position; a search plan can skip failed runs wholesale.
 type Plan struct {
-	match func(src string, pos int) int
-	find  func(src string, pos int) (int, int)
+	match     func(src string, pos int) int
+	find      func(src string, pos int) (int, int)
+	findState func(src string, pos int, state State) (int, int, State)
+}
+
+// State is cursor-owned execution metadata. Passing it by value keeps cursor
+// copies independent and avoids escaping their storage through an indirect call.
+type State struct {
+	decimalEnd int
 }
 
 func (p *Plan) Match(src string, pos int) int { return p.match(src, pos) }
-func (p *Plan) HasSearch() bool               { return p.find != nil }
+func (p *Plan) HasSearch() bool               { return p.find != nil || p.findState != nil }
 
 // Find receives the entire subject and the start of this search (the previous
 // match's end, initially zero). An anchored plan may fail without searching
 // later positions. Failure returns len(src), len(src) and exhausts the cursor.
 // Requires HasSearch(). Do not slice src or advance searchStart to retry a plan.
-func (p *Plan) Find(src string, searchStart int) (int, int) {
-	return p.find(src, searchStart)
+func (p *Plan) Find(src string, searchStart int, state State) (int, int, State) {
+	if p.findState != nil {
+		return p.findState(src, searchStart, state)
+	}
+	start, end := p.find(src, searchStart)
+	return start, end, state
 }
 
 // ASCIITriples builds P02 using the cursor's shared search past unmatched scalars;

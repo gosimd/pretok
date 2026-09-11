@@ -52,9 +52,10 @@ func Compile(pattern string) (*Regexp, error) {
 // exhaustion or disposal and must not be used concurrently. Its zero value is
 // exhausted. Copies have independent progress and may be iterated separately.
 type Cursor struct {
-	plan *scan.Plan
-	src  string
-	pos  int
+	plan  *scan.Plan
+	src   string
+	pos   int
+	state scan.State
 }
 
 // Cursor creates an iterator over non-empty, non-overlapping matches, skipping
@@ -75,7 +76,8 @@ func (r *Regexp) Cursor(src string) (Cursor, error) {
 // Repeated calls on an exhausted cursor keep returning false.
 func (c *Cursor) Next() (Span, bool) {
 	if c.pos < len(c.src) && c.plan.HasSearch() {
-		start, end := c.plan.Find(c.src, c.pos)
+		start, end, state := c.plan.Find(c.src, c.pos, c.state)
+		c.state = state
 		if end > start {
 			return c.matched(start, end)
 		}

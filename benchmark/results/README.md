@@ -44,6 +44,7 @@ sharing one scanner plan need separately validated measurements.
 | P22 (ASCII-prefixed words and P\|S runs) | Scalar, shared classes and whitespace | Apple M5 | [2026-09-11](P22/2026-09-11-apple-m5-scalar/REPORT.md) |
 | P10 (anchored Nd remainder) | Scalar, decimal run metadata | Apple M5 | [2026-09-11](P10/2026-09-11-apple-m5-scalar/REPORT.md) |
 | P14 (consecutive Nd triples) | Scalar, shared bounded decimal scanner | Apple M5 | [2026-09-11](P14/2026-09-11-apple-m5-scalar/REPORT.md) |
+| P25 (right-aligned Nd groups) | Scalar, cursor-owned run cache | Apple M5 | [2026-09-11](P25/2026-09-11-apple-m5-scalar/REPORT.md) |
 
 Each full P01/P05/P09/P13/P24/P20/P19/P06 run contains 1,710 samples: ten samples of at least 500 ms per measurement,
 using Go 1.27.0, Rust 1.90.0, HF Tokenizers 0.22.2, and onig 6.5.1. Its original
@@ -52,8 +53,7 @@ P16/P07/P08/P11/P12/P15/P17/P18/P21/P22/P23 runs contain 1,500 samples each: the
 because these patterns can leave gaps. Their Cursor and Split outputs are
 verified independently before timing.
 
-P02/P03/P04 are also implemented; only P25 remains unsupported.
-P02/P03/P04 have no published full performance runs yet.
+All 25 corpus strings are implemented. P02/P03/P04 have no published full runs.
 
 The [P05 refactor regression check](P05/2026-09-10-apple-m5-scalar-regression/REPORT.md)
 is a separate, completed before/after Go microbenchmark with identical harnesses.
@@ -120,3 +120,8 @@ with 32 additional continuation-failure cases in the synthetic pool. All 162,826
 requests passed live reference comparison for all 24 supported patterns. Its
 report separates successful decimal grouping from natural-text rejection and
 preserves raw samples, variation, allocations and source/corpus fingerprints.
+
+The P25 run contains 1,570 samples over 22 shared batches, with 240 additional
+right-alignment/cache-transition subjects. All 25 patterns passed the expanded
+163,066-request gate. The report includes the scoped before/after cost of the
+additional cursor metadata; historical reports keep their original fingerprints.

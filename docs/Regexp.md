@@ -4,7 +4,7 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports the 24 exact strings in the
+**Status:** the [Go API](../regexp.go) supports the 25 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
 expressions and tokenizer examples. Unregistered strings, including equivalent
 spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
@@ -217,8 +217,8 @@ multiple expressions belongs to the surrounding tokenizer.
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
 [corpus](../testdata/corpus_patterns.json) contains 25 unique strings. The
-[supported-pattern registry](SupportedPatterns.md) records implemented entries;
-the remaining strings are future implementation targets.
+[supported-pattern registry](SupportedPatterns.md) records all 25 implemented
+entries. Other exact strings remain unsupported.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any
 string absent from the supported registry returns an unsupported-pattern error.
@@ -388,7 +388,7 @@ only when the entire subject consists of that prefix and one or more triples.
 `1234567` has one match, `1`; `123456`, `x1234` and `1234` followed by LF have none.
 The lookahead leaves the rest as a single unmatched Split gap. See
 [contextual decimal plans](ContextualNumbers.md) for search context, the pinned
-meaning of `{3}+`, Unicode membership P14 continuation and the planned P25 extension.
+meaning of `{3}+`, Unicode membership P14 continuation and P25 right-aligned groups.
 
 ## P14: consecutive decimal triples
 
@@ -397,3 +397,12 @@ and continuing only at the previous match's end. `123x456` yields only `123`;
 Split retains `x456` as one gap. Failed partial triples never trigger a search
 for later digits. The plan reuses P10's bounded decimal scanner, pinned class
 and existing cursor exhaustion. See [continuation semantics](ContextualNumbers.md#p14-semantics).
+
+## P25: right-aligned decimal groups
+
+[P25](SupportedPatterns.md#p25) groups Nd runs from the right in blocks of 510
+scalars: 512 digits become 2 + 510, and 1021 become 1 + 510 + 510. It searches
+again after gaps. An internal, value-owned cursor state caches the byte end of
+the current series, keeping the scan linear and cursor copies independent.
+See [P25 semantics](ContextualNumbers.md#p25-semantics) for alternative priority,
+state ownership and the shared pinned decimal class.

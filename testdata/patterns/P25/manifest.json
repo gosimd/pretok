@@ -1,0 +1,30 @@
+{
+  "pattern_id": "P25",
+  "pattern": "\\p{Nd}{1,510}(?=(?>\\p{Nd}{510})*(?:\\P{Nd}|$))|\\G\\p{Nd}{510}",
+  "pattern_sha256": "ed1bca638d2b910dbe225d53b04a701f976dc9ef5db832ca1650fba79f0a53e0",
+  "source": {
+    "model_id": "arcee-ai/Trinity-Large-Thinking",
+    "revision": "dc6a99b6b74202880e31491a445a94884c97890c",
+    "file": "tokenizer.json",
+    "source_url": "https://huggingface.co/arcee-ai/Trinity-Large-Thinking/blob/dc6a99b6b74202880e31491a445a94884c97890c/tokenizer.json",
+    "sha256": "c5a93d847b4d3a1da95e9527c30ec10144f63a823e9feec98570274980754897",
+    "json_pointer": "/pre_tokenizer/pretokenizers/1/pattern/Regex",
+    "settings": {
+      "type": "Split",
+      "behavior": "Isolated",
+      "invert": false
+    }
+  },
+  "oracle_version": "0.22.2",
+  "matches_settings": {
+    "behavior": "Removed",
+    "invert": true
+  },
+  "split_settings": {
+    "behavior": "Isolated",
+    "invert": false
+  },
+  "shared_unicode_profile": "../P10/manifest.json",
+  "shared_unicode_profile_sha256": "7d7eba41497fdfb00650d5cae6700b80d05d818ae7404609d99c7137228b6fa3",
+  "validation": "Live native HF matches and isolated splits on the common corpus; offline RE2 Nd runs partitioned from the right; no stored output arrays."
+}

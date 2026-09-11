@@ -98,3 +98,10 @@ without a new class table or expected-output arrays. Offline tests use captured
 HF offsets and RE2 triples restricted to a contiguous prefix. The live native
 gate covers successful continuation, partial triples and failure before later
 digit runs. Cursor copies, reuse and malformed UTF-8 use the shared API tests.
+
+P25 stores exact source provenance and the hash of the shared P10 Unicode profile.
+It adds no Unicode table or stored output arrays. Offline tests select Nd runs
+with RE2 and partition rune boundaries from the right, independently of the
+forward scanner and its cache. The native gate generates reference spans live.
+Tests also cover cache transitions, cursor copies, interleaved subjects and
+zero-allocation reuse.

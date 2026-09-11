@@ -115,7 +115,16 @@ const ConsecutiveDecimalTriplesPattern = `\A\p{Nd}{3}|\G\p{Nd}{3}`
 
 var consecutiveDecimalTriples = scan.ConsecutiveDecimalTriples()
 
+// RightAlignedDecimalsPattern is the exact corpus P25 string.
+const RightAlignedDecimalsPattern = `\p{Nd}{1,510}(?=(?>\p{Nd}{510})*(?:\P{Nd}|$))|\G\p{Nd}{510}`
+
+var rightAlignedDecimals = scan.RightAlignedDecimals()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == RightAlignedDecimalsPattern {
+		return &rightAlignedDecimals, true
+	}
+
 	if pattern == ConsecutiveDecimalTriplesPattern {
 		return &consecutiveDecimalTriples, true
 	}

@@ -62,3 +62,8 @@ P14 adds 32 continuation-failure cases to the common synthetic pool: complete or
 partial triples followed by an ASCII letter, LF, NUL or a non-decimal number,
 then another digit run. It reuses the existing decimal pool and all 22 batches.
 References are generated live for every selected pattern.
+
+P25 adds 240 shared synthetic subjects around 510/1020/1530 group boundaries,
+with ASCII, Arabic-Indic, fullwidth and mathematical digits, mixed-width suffixes
+and intervening gaps. It reuses the existing decimal pool and all 22 batches.
+All inputs remain shared, and expected output spans are generated live.

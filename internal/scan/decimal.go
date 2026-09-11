@@ -62,3 +62,37 @@ func consecutiveDecimalTriples(src string, searchStart int) (int, int) {
 	}
 	return len(src), len(src)
 }
+
+// RightAlignedDecimals builds P25. The first alternative always matches at an
+// Nd scalar: its longest acceptable prefix leaves a multiple of 510 digits.
+// The later \G alternative therefore cannot change the selected match.
+func RightAlignedDecimals() Plan {
+	return Plan{findState: rightAlignedDecimals}
+}
+
+const decimalGroupSize = 510
+
+func rightAlignedDecimals(src string, searchStart int, state State) (int, int, State) {
+	if searchStart < state.decimalEnd {
+		// After the first group the cached remainder is a multiple of 510.
+		group := scanDecimals(src, searchStart, decimalGroupSize)
+		return searchStart, group.End, state
+	}
+	state = State{}
+	for pos := searchStart; pos < len(src); {
+		r, width := runeAt(src, pos)
+		if !decimal(r) {
+			pos += width
+			continue
+		}
+		run := scanDecimals(src, pos, 0)
+		state.decimalEnd = run.End
+		if run.Count <= decimalGroupSize {
+			return pos, run.End, state
+		}
+		first := (run.Count-1)%decimalGroupSize + 1
+		group := scanDecimals(src, pos, first)
+		return pos, group.End, state
+	}
+	return len(src), len(src), state
+}

@@ -1,9 +1,9 @@
 # Supported patterns
 
-This is the documentation registry of all **24 supported exact regex strings**,
+This is the documentation registry of all **25 supported exact regex strings**,
 ordered by corpus ID. The [runtime registry](../internal/compile/registry.go)
-selects these expressions; the [25-string corpus](../testdata/corpus_patterns.json)
-also contains unsupported target P25. IDs are stable.
+selects these expressions; every entry in the [25-string corpus](../testdata/corpus_patterns.json)
+is now implemented. Other regex strings remain unsupported. IDs are stable.
 
 `regexp(r"...")` is documentation notation for the string passed to `pretok.Compile`,
 not an additional public API. Raw string literals preserve every backslash.
@@ -19,7 +19,7 @@ A tokenizer can use several listed patterns in a Sequence. Recognizing its regex
 does not imply support for its entire tokenizer pipeline; see [Regexp](Regexp.md)
 for matching, gap handling and compatibility contracts.
 
-Jump to: [P01](#p01) · [P02](#p02) · [P03](#p03) · [P04](#p04) · [P05](#p05) · [P06](#p06) · [P07](#p07) · [P08](#p08) · [P09](#p09) · [P10](#p10) · [P11](#p11) · [P12](#p12) · [P13](#p13) · [P14](#p14) · [P15](#p15) · [P16](#p16) · [P17](#p17) · [P18](#p18) · [P19](#p19) · [P20](#p20) · [P21](#p21) · [P22](#p22) · [P23](#p23) · [P24](#p24).
+Jump to: [P01](#p01) · [P02](#p02) · [P03](#p03) · [P04](#p04) · [P05](#p05) · [P06](#p06) · [P07](#p07) · [P08](#p08) · [P09](#p09) · [P10](#p10) · [P11](#p11) · [P12](#p12) · [P13](#p13) · [P14](#p14) · [P15](#p15) · [P16](#p16) · [P17](#p17) · [P18](#p18) · [P19](#p19) · [P20](#p20) · [P21](#p21) · [P22](#p22) · [P23](#p23) · [P24](#p24) · [P25](#p25).
 
 ## P01
 
@@ -352,3 +352,18 @@ Tokenizer examples:
 - [HuggingFaceTB/SmolLM3-3B](https://huggingface.co/HuggingFaceTB/SmolLM3-3B/blob/a07cc9a04f16550a088caea529712d1d335b0ac1/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
 - [microsoft/phi-4](https://huggingface.co/microsoft/phi-4/blob/2db69c1c3e91a05d2c64a3185acfbaf36f744e25/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
 - [zai-org/GLM-4.7-Flash](https://huggingface.co/zai-org/GLM-4.7-Flash/blob/7dd20894a642a0aa287e9827cb1a1f7f91386b67/tokenizer.json) — `/pre_tokenizer/pretokenizers/0/pattern/Regex`.
+
+## P25
+
+```python
+regexp(r"\p{Nd}{1,510}(?=(?>\p{Nd}{510})*(?:\P{Nd}|$))|\G\p{Nd}{510}")
+```
+
+[Exact string and validation provenance](../testdata/patterns/P25/manifest.json).
+[Right-aligned grouping and cursor state](ContextualNumbers.md#p25-semantics).
+
+Tokenizer examples:
+
+- [arcee-ai/Trinity-Large-Thinking](https://huggingface.co/arcee-ai/Trinity-Large-Thinking/blob/dc6a99b6b74202880e31491a445a94884c97890c/tokenizer.json) — `/pre_tokenizer/pretokenizers/1/pattern/Regex`.
+- [arcee-ai/Trinity-Mini](https://huggingface.co/arcee-ai/Trinity-Mini/blob/cdb81e8130815fec299cccc8f8700004b8366e1e/tokenizer.json) — `/pre_tokenizer/pretokenizers/1/pattern/Regex`.
+- [arcee-ai/Trinity-Nano-Base](https://huggingface.co/arcee-ai/Trinity-Nano-Base/blob/923a95dbba013c78c4fd6dbc6bce31eea553da7c/tokenizer.json) — `/pre_tokenizer/pretokenizers/1/pattern/Regex`.
