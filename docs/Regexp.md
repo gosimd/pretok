@@ -9,6 +9,67 @@ detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 expressions and tokenizer examples. Unregistered strings, including equivalent
 spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
 
+## v0.1.0 release contract
+
+This document fixes the public contract for the planned **v0.1.0** release; it
+does not announce publication. The API, compilation, iteration, splitting, and
+ownership sections below are normative. Pattern-specific sections describe the
+selected-match semantics. The release's [supported-pattern registry](SupportedPatterns.md)
+and [pinned profiles](../testdata/patterns/README.md), read at the release revision,
+define its exact 25 supported strings and reference behavior.
+
+The public surface consists of `Regexp`, `Compile`, `Cursor`, `Cursor.Next`,
+`Span`, `Regexp.Cursor`, `Regexp.Split`, and the three error sentinels
+`ErrUnsupportedPattern`, `ErrUninitialized`, and `ErrInvalidUTF8`. `Cursor` names
+both a type and a method of `Regexp`; there is no package-level `Cursor` or
+`Split` function. Callers should use `errors.Is` to identify errors; their text
+is diagnostic, not a compatibility key.
+
+The observable guarantees are:
+
+- Exact lookup of the caller's JSON-decoded pattern, with no normalization,
+  syntax diagnostics, approximation, or fallback engine.
+- Non-empty half-open UTF-8 byte spans into the supplied input, preserving
+  ordered alternatives, the pinned character classes, and search assertions.
+- Full UTF-8 validation before scanning, initialization errors taking priority,
+  and an unchanged destination (including backing storage) on `Split` errors.
+- Match-only iteration through `Cursor`; isolated matches and maximal unmatched
+  gaps through `Split`. Empty input produces no matches and appends no spans.
+- Append semantics and caller-owned destination reuse. Existing destination
+  entries are preserved; appended offsets are relative to the current input.
+- Immutable compiled expressions, independent cursor copies, and concurrent
+  scans with separate cursors and destination buffers. A cursor borrows its
+  input; `Regexp` and `Split` retain neither input nor destination buffers.
+
+For `gosimd/bpe`, use `Split` when the next stage must receive all input pieces.
+Using only `Cursor` would omit unmatched gaps. Regex support does not infer or
+implement arbitrary HF `Split` behaviors, `invert` settings, or a Sequence.
+ByteLevel mapping, special tokens, normalization, BPE and token IDs remain the
+consumer's responsibility. The existing signatures are sufficient for this
+boundary; no full pre-tokenizer pipeline is part of v0.1.0.
+
+### Compatibility policy for v0.1.x
+
+Although the module is pre-v1, the project adopts the following patch-release
+policy:
+
+- Preserve public signatures, sentinel error meanings, ownership, append/error
+  guarantees, and the accepted exact-string set. New pattern registrations or
+  intentional contract changes require a new minor version and migration notes
+  where relevant.
+- Preserve selected matches and split boundaries for supported strings.
+  Refactoring or optimization must not silently change them. Do not update
+  Unicode semantics implicitly with a Go toolchain or reference-engine upgrade.
+- A correction of an implementation defect against the pinned contract may be
+  released as a patch. If it changes output boundaries, release notes must name
+  the affected patterns and show before/after input and spans, backed by a pinned
+  reference regression test. An intentional new interpretation is not a patch
+  correction.
+- Internal scanner plans, cursor layout, and algorithms are implementation
+  details. Benchmark timings and allocation counts are measured properties,
+  not fixed numerical API guarantees; performance changes still require the
+  project's validation and regression reporting.
+
 ## Scanner semantics
 
 [P05 expression](SupportedPatterns.md#p05).

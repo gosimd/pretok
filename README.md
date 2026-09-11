@@ -11,6 +11,10 @@ Module path: `github.com/gosimd/pretok`.
 and tokenizer examples. `Compile`, `Cursor`, and `Split` are checked against pinned
 Hugging Face references. No SIMD backend is implemented.
 
+The [v0.1.0 release contract](docs/Regexp.md#v010-release-contract) fixes the API,
+boundary and ownership guarantees, and compatibility policy for v0.1.x.
+This is the contract for the planned release, not a publication announcement.
+
 ## Scope
 
 `pretok` specializes in regex patterns used for pre-tokenization, including those
