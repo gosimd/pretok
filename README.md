@@ -6,20 +6,10 @@ where it helps.
 
 Module path: `github.com/gosimd/pretok`.
 
-**Status:** scalar implementation for twenty-one exact regex strings: P05 (Qwen
-letter-only words), P01 (letters and marks), P02 (exactly three ASCII digits),
-P03 (whitespace ending at a line boundary or EOF), and P04 (ordered words with case-sensitive Unicode classes), plus P09/P13 as
-exact aliases of P05. P16 matches one ASCII digit; P07 matches 1–3 Unicode N
-scalars. P24/P20 reuse the Qwen template with N{1,3}/N+ number branches.
-P19/P06 attach optional contractions to the selected P04 word endpoint, with
-one Unicode number or groups of 1–3 respectively.
-P01/P05 share one parameterized scanner template; P02 reuses the public cursor
-and gap handling. P04 shares the number/symbol/whitespace tail and uses
-a dedicated word scanner with pinned Unicode classes. `Compile`, `Cursor`, and
-`Split` are checked against pinned Hugging Face references.
-P08/P11/P17/P18/P21/P23 use exact literal sets and a shared run search.
-P12/P15 preserve ordered script groups, including overlapping sets. The other 4 corpus
-strings remain unsupported. No SIMD backend is implemented.
+**Status:** scalar support for 22 exact regex strings. See the
+[supported-pattern registry](docs/SupportedPatterns.md) for IDs, exact expressions
+and tokenizer examples. `Compile`, `Cursor`, and `Split` are checked against pinned
+Hugging Face references. No SIMD backend is implemented.
 
 ## Scope
 
@@ -39,7 +29,7 @@ compatibility with an entire tokenizer pipeline.
 ## How it works
 
 The first implementation uses an explicit registry of known regex strings. The
-current [corpus](research/pretokenize_regex/all_patterns.json) contains 25 unique
+current [corpus](testdata/corpus_patterns.json) contains 25 unique
 strings; this is the initial research target, not a claim of implemented support.
 
 ```text
@@ -273,3 +263,8 @@ Full scalar benchmarks for the ordered group plans are available for
 [P15](benchmark/results/P15/2026-09-11-apple-m5-scalar/REPORT.md).
 The [summary](benchmark/README.md#ordered-group-patterns-completed-apple-m5-measurements)
 includes per-language throughput and separate Oniguruma/HF comparisons.
+
+The [P22 scalar report](benchmark/results/P22/2026-09-11-apple-m5-scalar/REPORT.md)
+contains 1,500 measurements across all shared batches. See its
+[per-language summary](benchmark/README.md#p22-completed-apple-m5-measurements)
+for separate Oniguruma and HF Split comparisons.

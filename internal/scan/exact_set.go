@@ -96,8 +96,8 @@ func Complement() Plan {
 	return Plan{find: p.find}
 }
 
-// runEnd extends a nonempty match within one fixed set. Both plain and grouped
-// runs use this same consumption loop; classification never changes mid-run.
+// runEnd scans a possibly empty suffix within one fixed set. Plain, grouped,
+// and P22 runs share this loop; classification never changes mid-run.
 func (s *exactSet) runEnd(src string, pos int) int {
 	for pos < len(src) {
 		r, size := runeAt(src, pos)

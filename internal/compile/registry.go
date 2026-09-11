@@ -100,7 +100,16 @@ const HangulGroupsPattern = `\p{Hangul}+|[！…“”‘’—：；，、-〿�
 
 var hangulGroups = scan.HangulGroups()
 
+// PunctuationWordsPattern is exact corpus P22, including literal CR/LF.
+const PunctuationWordsPattern = "[!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~][A-Za-z]+|[^\r\n\\p{L}\\p{P}\\p{S}]?[\\p{L}\\p{M}]+| ?[\\p{P}\\p{S}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
+
+var punctuationWords = scan.PunctuationWords()
+
 func Lookup(pattern string) (*scan.Plan, bool) {
+	if pattern == PunctuationWordsPattern {
+		return &punctuationWords, true
+	}
+
 	if pattern == HangulGroupsPattern {
 		return &hangulGroups, true
 	}

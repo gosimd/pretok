@@ -141,6 +141,13 @@
       "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
       "full_coverage": false
     },
+    "P22": {
+      "pattern": "[!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~][A-Za-z]+|[^\r\n\\p{L}\\p{P}\\p{S}]?[\\p{L}\\p{M}]+| ?[\\p{P}\\p{S}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+",
+      "pattern_sha256": "c903ee638e48e525ed7aefd8bcf804c5a88b80358403017a36f52702360a031c",
+      "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+      "fixture_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
+      "full_coverage": false
+    },
     "P23": {
       "pattern": " ?[^(\\s|[.,!?…。，、।۔،])]+",
       "pattern_sha256": "c997711b730df03beec340e0abdbce3bb255c74e7560fa0c5e6e00f4b7b38a2a",
@@ -149,7 +156,7 @@
       "full_coverage": false
     }
   },
-  "generator_sha256": "bc7a99a7dfee8b69f94872e3523814c31349ddc9e12688748fff35d6e28f6188",
+  "generator_sha256": "f2a771f0fcb8f3047d9f24c266a9d6a6e0877d9d0aceee166ad7acbf657a8956",
   "case_tables_sha256": "bed4c67cc2192251c82f1071bbb16869b7e25f7dc00e517cae61950af46dc36e",
   "selection": "Pinned first shard, stored row order; nonempty records; 32 KiB per record; LF LF joins; 1 MiB UTF-8 prefix.",
   "corpora": [
@@ -347,18 +354,18 @@
       "id": "synthetic",
       "kind": "synthetic",
       "file": "synthetic.txt.gz",
-      "sha256": "90d05325d39a4883b340acad88533f1f3057f189efe4285bd8c826123335b797",
-      "compressed_sha256": "0f118c9fd7a4131685756278f9da588e3a5572acd312b70c4e5412d501c88553",
-      "bytes": 2677360,
-      "scalars": 1381148,
-      "ascii_fraction": 0.2345030178982281,
+      "sha256": "48e957c71574d7878aca490d6d3ea42f9877834ebfe403186bc80042f26b4fee",
+      "compressed_sha256": "4f610e9382718dcd4cceb2782b5d97b4a8e53b4b1587273bae52764e090f1e34",
+      "bytes": 2920018,
+      "scalars": 1513379,
+      "ascii_fraction": 0.23781120527339214,
       "source_file": null,
       "batches": [
         {
           "size": 0,
           "file": "synthetic-0.json",
-          "sha256": "e029bb14a7191cf4b5e4446ecc12bbedce5fe08b16fb7f902e30345448c3c42e",
-          "requests": 96186
+          "sha256": "928c1b6d38e3e6a2957cf8d1b1f1a648cd435b59226021957c05383f2dcc475b",
+          "requests": 119511
         }
       ]
     }

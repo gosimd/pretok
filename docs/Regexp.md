@@ -4,20 +4,14 @@
 an immutable, specialized scanner. `pretok` is limited to regex-based boundary
 detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 
-**Status:** the [Go API](../regexp.go) supports exact corpus strings P01–P09, P11–P13, P15–P21, P23, and P24.
-P01/P05 share a scalar template with immutable word/symbol parameters; P02 uses
-an ASCII-triplet plan, P03 uses a line-end whitespace search, and P04 uses
-ordered case-word candidates. P19/P06 reuse P04 words with optional contraction suffixes. P09/P13 reuse the P05 plan. P16/P07 use numeric runs; P24/P20 vary the Qwen number bound. P08/P11/P17/P18/P21/P23 share exact-set run search. P12/P15 retain their selected alternative throughout a run. The other 4
-strings, including equivalent aliases, return `ErrUnsupportedPattern`.
-SIMD is not implemented.
+**Status:** the [Go API](../regexp.go) supports the 22 exact strings in the
+[supported-pattern registry](SupportedPatterns.md), which lists their IDs,
+expressions and tokenizer examples. Unregistered strings, including equivalent
+spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
 
-## Supported expressions
+## Scanner semantics
 
-P05:
-
-```regex
-(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+
-```
+[P05 expression](SupportedPatterns.md#p05).
 
 This exact string occurs in Qwen/Qwen2.5-0.5B, among other corpus models. See the
 [fixture manifest](../testdata/qwen/manifest.json) for the model revision, original
@@ -30,11 +24,7 @@ escapes. It must be passed unchanged after JSON decoding; no normalization occur
 Its source uses Removed/invert=true, while the benchmark also verifies isolated
 splits. Both outputs coincide for this fully covering expression.
 
-P13 is:
-
-```regex
-'(?i:[sdmt]|ll|ve|re)|[^\r\n\p{L}\p{N}]?+\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]++[\r\n]*|\s*[\r\n]|\s+(?!\S)|\s+
-```
+[P13 expression](SupportedPatterns.md#p13).
 
 For this exact shape the possessive prefix is disjoint from the word body, and
 the possessive symbol body is disjoint from its CR/LF suffix. Giving characters
@@ -44,11 +34,7 @@ contractions retain the same pinned case folding and selected boundaries.
 These facts justify sharing one immutable plan, without a general rule for
 removing possessive quantifiers or registering other equivalent spellings.
 
-P01:
-
-```regex
-(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}]+|\p{N}| ?[^\s\p{L}\p{M}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+
-```
+[P01 expression](SupportedPatterns.md#p01).
 
 P01 includes Unicode marks in the word body and excludes them from symbol runs.
 Its prefix still excludes only CR/LF/L/N, so marks overlap the prefix and body.
@@ -83,11 +69,7 @@ and symbol alternatives are always tried first. Cuts never subtract a byte from
 a multibyte whitespace character.
 
 P01/P05 cover all valid Unicode input, so their `Cursor` and `Split` outputs
-coincide. P02 exercises their distinct gap-handling contracts:
-
-```regex
-[0-9][0-9][0-9]
-```
+coincide. [P02](SupportedPatterns.md#p02) exercises their distinct gap-handling contracts.
 
 P02's `asciiTriplet` matches exactly three consecutive ASCII digits. It groups a
 long digit run from the left, without consuming an incomplete group. Unicode
@@ -234,9 +216,9 @@ multiple expressions belongs to the surrounding tokenizer.
 
 The first implementation of `Compile` uses an explicit registry mapping exact
 regex strings to prewritten scanner plans and immutable parameters. The research
-[corpus](../research/pretokenize_regex/all_patterns.json) currently contains 25
-unique strings. P01–P09, P11–P13, P15–P21, P23, and P24 are implemented; the remaining strings are future
-implementation targets.
+[corpus](../testdata/corpus_patterns.json) contains 25 unique strings. The
+[supported-pattern registry](SupportedPatterns.md) records implemented entries;
+the remaining strings are future implementation targets.
 
 **A syntactically valid general-purpose regex can still fail to compile.** Any
 string absent from the supported registry returns an unsupported-pattern error.
@@ -372,3 +354,29 @@ consumption loop as plain sets. Plans are immutable; group selection lives only
 in the current search call. Both patterns can leave gaps: Cursor skips them and
 Split preserves maximal gaps. UTF-8 validation, byte offsets, destination reuse,
 and the public API are unchanged. Only the two exact decoded strings compile.
+
+## P22: punctuation-prefixed words and positive symbol classes
+
+The [P22 manifest](../testdata/patterns/P22/manifest.json) pins the exact decoded
+string, including literal CR/LF, and immutable tokenizer source. Its order is:
+
+1. One explicitly listed ASCII punctuation/symbol followed by ASCII letters.
+2. An optional scalar outside CR/LF/L/P/S followed by one or more L|M scalars.
+3. Optional ASCII space, a nonempty P|S run, then zero or more CR/LF bytes.
+4. The existing ordered newline/trailing-whitespace/general-whitespace branches.
+
+There is no contraction or numeric branch. `!abcé` matches `!abc`, then `é`;
+`123abc` matches only `3abc` and leaves `12` as a gap. `!!abc` matches `!!`, then
+`abc`: the first branch does not restart inside a symbol run. An initial mark can
+belong to prefix and word body; a singleton mark still matches. Digits, format
+characters and other controls can prefix a word, while P|S characters cannot.
+
+`punctuationWordPlan` reuses the pinned L|M table, `exactSet` consumption and the
+shared whitespace decision. P|S is a positive union, not the complement of L/N
+or whitespace. Its 349 ranges are generated from HF Tokenizers 0.22.2 by
+`testdata/patterns/generate_punctuation_tables.py`. Go 1.27's Unicode 17 P/S union
+differs from this pinned oracle on 104 scalars, so current standard-library
+categories cannot replace this table without changing the contract.
+
+Cursor skips unmatched gaps and Split preserves maximal gaps. Public API,
+UTF-8 validation, byte offsets and destination ownership are unchanged.
