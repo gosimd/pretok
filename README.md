@@ -1,287 +1,150 @@
 # pretok
 
-`pretok` is a Go library for fast pre-tokenization for LLM tokenizers, compiling
-common tokenizer regex patterns into specialized scanners, with SIMD acceleration
-where it helps.
+`github.com/gosimd/pretok` compiles common LLM pre-tokenization regex strings into
+specialized Go scanners. Compile once, then find byte boundaries without a regex
+engine in the scanning path.
 
-Module path: `github.com/gosimd/pretok`.
+**Status:** all 25 exact strings in the [supported-pattern registry](docs/SupportedPatterns.md)
+are implemented and checked against pinned Hugging Face references. The current
+backend is scalar; SIMD is future work. The [v0.1.0 contract](docs/Regexp.md#v010-release-contract)
+is fixed, and the release is being prepared. This is not a publication announcement.
 
-**Status:** scalar support for 25 exact regex strings. See the
-[supported-pattern registry](docs/SupportedPatterns.md) for IDs, exact expressions
-and tokenizer examples. `Compile`, `Cursor`, and `Split` are checked against pinned
-Hugging Face references. No SIMD backend is implemented.
+## Installation
 
-The [v0.1.0 release contract](docs/Regexp.md#v010-release-contract) fixes the API,
-boundary and ownership guarantees, and compatibility policy for v0.1.x.
-This is the contract for the planned release, not a publication announcement.
+Requires **Go 1.27.0 or newer**. The Go module has no external dependencies;
+using the library requires neither Rust, Python nor a native regex library.
 
-## Scope
+Once the v0.1.0 tag is published, install that version with:
 
-`pretok` specializes in regex patterns used for pre-tokenization, including those
-found in Hugging Face `tokenizer.json` files. It compiles supported patterns once
-and splits text repeatedly without a regex engine in the runtime path.
-
-It is not a general-purpose regex engine. A valid regex outside the supported
-subset must produce an explicit unsupported-pattern error. Compilation must never
-silently approximate a pattern or fall back to a general regex engine.
-
-The library finds pre-token boundaries. Text normalization, special-token handling,
-ByteLevel encoding, BPE merges, vocabulary lookup, token IDs, and post-processing
-belong to the surrounding tokenizer. Compiling a regex alone does not establish
-compatibility with an entire tokenizer pipeline.
-
-## How it works
-
-The first implementation uses an explicit registry of known regex strings. The
-current [corpus](testdata/corpus_patterns.json) contains 25 unique
-strings; this is the initial research target, not a claim of implemented support.
-
-```text
-pre-tokenization regex string
-        |
-        v
-exact lookup in the supported-pattern registry
-        |
-        v
-select a prewritten scanner plan + immutable parameters
-        |
-        v
-scan text using specialized scalar / SIMD code
+```sh
+go get github.com/gosimd/pretok@v0.1.0
 ```
 
-Lookup compares the exact regex string after JSON decoding by the caller. It does
-not parse an AST, normalize syntax, trim whitespace, or unescape the regex again.
-Unknown strings return an unsupported-pattern error, including malformed strings
-and equivalent spellings that have not been registered explicitly.
+Before publication, the examples and tests can be run from this checkout:
 
-Several known strings may select the same scanner when matching behavior has been
-verified to be equivalent. Supporting 25 strings does not require 25 independent
-scanner implementations. Register each entry only after its scalar plan has been
-validated against the pinned reference. No general regex engine runs as a fallback.
+```sh
+GOWORK=off go test -mod=readonly ./...
+```
 
-Shared work such as whitespace scanning is designed into the prewritten plans.
-Alternative priority, greediness, Unicode properties, assertions, and consumed
-boundaries must still match the reference. Exact lookup removes the need for a
-parser; it does not remove the need to establish each pattern's semantics.
+## Quick start
 
-A future compiler may add parsing and structural recognition behind the same
-public API. That is deferred, not a prerequisite for the first implementation.
-
-## Public API
-
-See [Regexp](docs/Regexp.md) for the API contract, ownership rules, and the
-handling of unsupported patterns, including general-purpose regexes.
-
-`Regexp` names the compiled expression: `pretok.Regexp`. Scanner kernels remain
-implementation details. The library handles one regex at a time; it does not
-provide a full `PreTokenizer` or a `CompileSequence` pipeline.
+This is the exact P07 pattern: groups of one to three Unicode number scalars.
+The example is also checked by [Go example tests](example_test.go).
 
 ```go
-type Span struct {
-    Start int
-    End   int
-}
+package main
 
+import (
+    "fmt"
+
+    "github.com/gosimd/pretok"
+)
+
+func main() {
+    re, err := pretok.Compile(`\p{N}{1,3}`)
+    if err != nil {
+        panic(err)
+    }
+
+    input := "x1234y"
+    spans, err := re.Split(input, nil)
+    if err != nil {
+        panic(err)
+    }
+    for _, span := range spans {
+        fmt.Printf("%q [%d,%d)\n", input[span.Start:span.End], span.Start, span.End)
+    }
+}
+// Output:
+// "x" [0,1)
+// "123" [1,4)
+// "4" [4,5)
+// "y" [5,6)
+```
+
+For repeated calls, keep the compiled expression and reuse caller-owned capacity:
+
+```go
+spans, err = re.Split(nextInput, spans[:0])
+```
+
+Check `err` before consuming the result. `Split` appends to its destination;
+passing `spans` instead of `spans[:0]` retains the existing entries as a prefix.
+
+## API and behavior
+
+```go
 func Compile(pattern string) (*Regexp, error)
 func (r *Regexp) Cursor(src string) (Cursor, error)
 func (c *Cursor) Next() (Span, bool)
 func (r *Regexp) Split(src string, dst []Span) ([]Span, error)
 ```
 
-Usage with the supported expression:
+- `Compile` accepts the exact string after JSON decoding by the caller. It does
+  not trim, unescape again, parse or normalize. Any unregistered string, including
+  malformed syntax and equivalent spellings, returns `ErrUnsupportedPattern`.
+- `Cursor` returns non-empty matches and skips unmatched gaps. For `x1234y`
+  above it returns only `123` and `4`.
+- `Split` isolates each match and each maximal unmatched gap. Its appended pieces
+  cover the input; empty input appends nothing.
+- `Span{Start, End}` uses half-open UTF-8 byte offsets into the supplied string.
+  The bytes are preserved. All scanning entry points reject malformed UTF-8 with
+  `ErrInvalidUTF8`; `Split` leaves the destination unchanged on error.
+- A compiled `Regexp` is immutable and supports concurrent scans with independent
+  cursors and buffers. A cursor borrows its input and owns its iteration state.
+  `Regexp` and `Split` retain neither input nor destination buffers.
+- Scanning with a nil or zero-value `Regexp` returns `ErrUninitialized`. Use
+  `errors.Is` for error handling; see the [executable examples](example_test.go).
 
-```go
-re, err := pretok.Compile(pattern)
-if err != nil {
-    return err
-}
+The [Regexp contract](docs/Regexp.md) specifies error precedence, cursor copies,
+ownership and v0.1.x compatibility. The [pattern registry](docs/SupportedPatterns.md)
+lists exact expressions, stable P01–P25 IDs and pinned tokenizer examples.
 
-spans, err := re.Split(input, dst[:0])
-if err != nil {
-    return err
-}
-for _, span := range spans {
-    piece := input[span.Start:span.End]
-    _ = piece
-}
-```
+## Integration boundary
 
-The runtime contract is:
+The library handles regex boundaries only. It does not implement BPE, vocabulary
+lookup, token IDs, special tokens, normalization, ByteLevel mapping or a complete
+Hugging Face tokenizer pipeline. There is no generic regex fallback.
 
-- `Compile` returns an immutable `Regexp`, reusable across concurrent calls.
-  The first implementation accepts only registered strings and reports all other
-  strings as `ErrUnsupportedPattern`, without separate syntax diagnostics.
-- `Cursor` iterates non-empty regex matches only, skipping unmatched gaps.
-  It borrows its input and owns mutable iteration state. A zero or exhausted
-  cursor returns `Span{}, false` from `Next`.
-- `Split` isolates each non-empty match and preserves each maximal unmatched gap.
-  It appends spans to caller-owned `dst`; pass `dst[:0]` for a fresh result.
-  Empty input adds no spans. The resulting pieces cover the supplied input.
-- Spans are half-open byte offsets `[Start, End)` into the exact supplied string,
-  on UTF-8 character boundaries. They are not rune indices.
-- Runtime entry points validate UTF-8 before scanning. Invalid UTF-8 returns
-  `ErrInvalidUTF8`; `Split` leaves `dst` unchanged. Input bytes are never replaced.
-- Patterns that can produce zero-length matches are initially unsupported.
-- `Regexp` and `Split` retain neither input nor destination storage. A cursor
-  borrows input for its lifetime. Execution scratch and CPU dispatch stay internal.
+`Split` implements isolated splitting with unmatched gaps retained. Other HF
+split behaviors and `invert` settings are not inferred from a pattern. When
+composing stages, the caller passes each prior-stage piece separately and adds
+its base offset where needed. Use `Cursor` only when dropping gaps is intended.
+Regex support alone does not establish complete tokenizer compatibility.
 
-`Split` corresponds to isolated splitting with gaps retained. A caller needing
-matches only can consume `Cursor`. Other HF split behaviors are not implied by
-regex support. Composition of regex stages belongs to the surrounding tokenizer,
-which passes each prior-stage piece separately and preserves its boundaries.
+## Validation and performance
 
-## Compatibility driven by a tokenizer corpus
-
-Support will grow from observed tokenizer patterns rather than an attempt to cover
-all regex syntax:
-
-1. Collect pre-tokenizer regex patterns and their surrounding configuration from
-   a documented selection of tokenizer files, pinned to model revisions.
-2. Preserve exact decoded strings and provenance. Manually group patterns that
-   can share scanner code; do not normalize expressions during compilation.
-3. Build reference outputs with a pinned Hugging Face tokenizer implementation and
-   the relevant split configuration.
-4. Implement scalar plans and compare exact pieces and byte offsets with the
-   reference, including adversarial inputs and end-of-input cases.
-5. Add SIMD paths where profiling and repeatable benchmarks justify them.
-
-A future support table should list verified pattern families, source revisions,
-split settings, and known limits. The number of families and their coverage must
-come from the collected corpus, not an assumed estimate. Unsupported syntax or
-semantics remain an explicit compile-time error.
-
-The first [research survey](research/pretokenize_regex/README.md) collects explicit
-`pretokenize_regex` fields from Hugging Face `tokenizer_config.json` and
-`pre_tokenizer` regexes from `tokenizer.json`, with
-[results and pinned sources](research/pretokenize_regex/TOKENIZER_REPORT.md).
-It preserves surrounding split settings. Discovery alone does not establish
-support. The initial P05 implementation has
-its own [oracle fixtures](testdata/qwen/manifest.json); P01 has [separate fixtures](testdata/patterns/P01/manifest.json) and a [maintained regeneration script](testdata/patterns/README.md). P02 has [source metadata](testdata/patterns/P02/manifest.json); its references
-are generated in memory by the common benchmark pipeline. P04 has
-[its own pinned source and class-table profile](testdata/patterns/P04/manifest.json)
-and also uses live references. [P03](testdata/patterns/P03/manifest.json) uses
-the same live-reference pipeline with the pinned HF line-anchor semantics.
-[P09](testdata/patterns/P09/manifest.json) and [P13](testdata/patterns/P13/manifest.json)
-share the P05 plan and undergo independent live reference checks. Full tokenizer
-compatibility is outside this package.
-
-The [structural and semantic analysis](research/regex_analysis/ANALYSIS.md) groups
-the observed alternatives into parameterized scanner operations and records
-pinned oracle experiments. Its AST/IR compiler proposal is deferred; the first
-implementation selects prewritten plans by exact string lookup.
-
-## Layout
-
-```text
-regexp.go              public compilation and scanning facade
-internal/compile/      exact-string registry and scanner-plan selection
-internal/scan/         scanner plans, scalar constructions, pinned Unicode tables
-testdata/              pinned patterns, provenance, and reference outputs
-```
-
-The root API stays focused on compilation and splitting. The registry, execution
-plans, scratch buffers, and CPU dispatch are implementation details. Parser and IR
-packages are deferred until broader recognition is needed.
-
-## Performance and validation
-
-[Benchmark methodology](docs/Benchmark.md) defines the implemented Oniguruma and
-native HF comparisons, multilingual corpus, timing boundaries, and report metrics.
-See [benchmark/README.md](benchmark/README.md) to build and run the offline suite.
-The [P01 Apple M5 scalar report](benchmark/results/P01/2026-09-10-apple-m5-scalar/REPORT.md),
-[original P05 report](benchmark/results/P05/2026-09-09-apple-m5-scalar/REPORT.md),
-[P09 report](benchmark/results/P09/2026-09-10-apple-m5-scalar/REPORT.md), and
-[P13 report](benchmark/results/P13/2026-09-10-apple-m5-scalar/REPORT.md)
-include all languages and sizes, raw samples, and environment fingerprints.
-Numeric-family reports are available for
-[P16](benchmark/results/P16/2026-09-10-apple-m5-scalar/REPORT.md),
-[P07](benchmark/results/P07/2026-09-10-apple-m5-scalar/REPORT.md),
-[P24](benchmark/results/P24/2026-09-10-apple-m5-scalar/REPORT.md),
-[P20](benchmark/results/P20/2026-09-10-apple-m5-scalar/REPORT.md).
-Case-word suffix reports are available for
-[P19](benchmark/results/P19/2026-09-10-apple-m5-scalar/REPORT.md) and
-[P06](benchmark/results/P06/2026-09-10-apple-m5-scalar/REPORT.md).
-See the [benchmark summary](benchmark/README.md) for per-language results.
-
-The [Regexp contract](docs/Regexp.md) lists the exact supported strings and plan
-components. [Oracle regeneration](research/qwen/README.md) is separate from ordinary
-offline tests:
+Ordinary Go tests run offline from the checked-in files:
 
 ```sh
-go test ./...
-go test -race ./...
-go test -run '^$' -fuzz FuzzQwenPartition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP01Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP02Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP03Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP09Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP13Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP04Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP16Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP07Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP24Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP20Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP19Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzP06Partition -fuzztime 10s .
-go test -run '^$' -fuzz FuzzCaseWordSuffix -fuzztime 10s ./internal/scan
-go test -run '^$' -fuzz FuzzCaseWordCandidates -fuzztime 10s ./internal/scan
+GOWORK=off go test -mod=readonly ./...
+GOWORK=off go test -mod=readonly -race ./...
+GOWORK=off go vet -mod=readonly ./...
 ```
 
-The checked-in fixtures contain 7,738 P05 cases and 26,820 P01 cases. P02 uses
-small inline regressions, offline differential fuzzing against Go regexp, and
-live HF comparison on every common benchmark request; it adds no stored output
-archives. P03 uses the same approach with an explicit pinned whitespace class
-and multiline anchor for offline differential tests. P04 adds inline HF cases, branch-candidate differential fuzzing, and
-live HF matches/splits on the common corpus. Unicode class membership and the
-contraction case folds are generated from every Unicode scalar using the pinned
-native oracle, rather than Go's evolving Unicode tables. These checks establish
-bounded differential evidence, not proof of all input combinations.
+[Reproducibility](docs/Reproducibility.md) describes the pinned Unicode tables,
+fixture generators and live HF correctness checks. Benchmark reference spans
+are generated in memory; they are not stored in the shared input corpus.
 
-Correctness comes first: reference-versus-scalar tests establish compatibility,
-and scalar-versus-SIMD tests establish backend parity. Tests should cover Unicode,
-contractions, number boundaries, punctuation, mixed whitespace, CR/LF, and EOF,
-as well as explicitly registered equivalent spellings and rejected unknown strings.
+See the [benchmark instructions](benchmark/README.md), [methodology](docs/Benchmark.md)
+and [completed reports](benchmark/results/README.md). Reports distinguish matches
+from isolated pieces, fresh from reused destinations, and natural text from
+synthetic cases. Their machine, toolchain, source and corpus fingerprints scope
+the measurements; historical results are not measurements of every later commit.
 
-Benchmarks separate compilation cost from repeated scanning and report
-throughput, latency, and allocations. Both short prompts and long multilingual
-inputs matter. Performance claims must name the machine, Go version, backend,
-corpus, and comparison baseline, and include regressions.
+## Repository guide
+
+| Path | Purpose |
+| --- | --- |
+| [regexp.go](regexp.go) | Public API |
+| [internal/compile](internal/compile) | Exact-string registry and plan selection |
+| [internal/scan](internal/scan) | Scalar scanners and pinned Unicode tables |
+| [testdata](testdata) | Pattern provenance, generators and regression fixtures |
+| [benchmark](benchmark) | Shared corpus, native reference runner and reports |
+| [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ## License
 
-[MIT](LICENSE).
-
-The exact-set family now has full scalar benchmark reports for
-[P11](benchmark/results/P11/2026-09-10-apple-m5-scalar/REPORT.md),
-[P21](benchmark/results/P21/2026-09-10-apple-m5-scalar/REPORT.md),
-[P17](benchmark/results/P17/2026-09-10-apple-m5-scalar/REPORT.md),
-[P18](benchmark/results/P18/2026-09-10-apple-m5-scalar/REPORT.md),
-[P08](benchmark/results/P08/2026-09-10-apple-m5-scalar/REPORT.md),
-[P23](benchmark/results/P23/2026-09-10-apple-m5-scalar/REPORT.md).
-See the [benchmark summary](benchmark/README.md#exact-set-patterns-completed-apple-m5-measurements)
-for per-language throughput and separate Oniguruma/HF ratios. These six runs
-contain 9,000 measurements with the same source, binaries and shared corpus.
-
-Full scalar benchmarks for the ordered group plans are available for
-[P12](benchmark/results/P12/2026-09-11-apple-m5-scalar/REPORT.md) and
-[P15](benchmark/results/P15/2026-09-11-apple-m5-scalar/REPORT.md).
-The [summary](benchmark/README.md#ordered-group-patterns-completed-apple-m5-measurements)
-includes per-language throughput and separate Oniguruma/HF comparisons.
-
-The [P22 scalar report](benchmark/results/P22/2026-09-11-apple-m5-scalar/REPORT.md)
-contains 1,500 measurements across all shared batches. See its
-[per-language summary](benchmark/README.md#p22-completed-apple-m5-measurements)
-for separate Oniguruma and HF Split comparisons.
-
-The [P10 scalar report](benchmark/results/P10/2026-09-11-apple-m5-scalar/REPORT.md)
-separates successful decimal subjects from natural-text rejection, including
-regressions against Oniguruma. See [contextual decimal plans](docs/ContextualNumbers.md)
-for P10/P14/P25 implementations and their shared decimal scanner.
-
-The [P14 scalar report](benchmark/results/P14/2026-09-11-apple-m5-scalar/REPORT.md)
-measures consecutive decimal triples on the shared corpus, with separate results
-for successful grouping and natural-text rejection.
-
-The [P25 scalar report](benchmark/results/P25/2026-09-11-apple-m5-scalar/REPORT.md)
-measures right-aligned decimal groups and records the cost of adding cursor-owned
-state to existing paths. All 25 exact corpus strings are now supported.
+Library code is [MIT licensed](LICENSE). Benchmark text has separate
+[licenses and attribution](benchmark/corpus/LICENSE.md); retain its source
+manifests and notices when redistributing the corpus.

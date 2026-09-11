@@ -1,5 +1,10 @@
 # Pattern provenance and reference validation
 
+See [Reproducibility](../../docs/Reproducibility.md) for environment setup,
+generation order, clean-checkout checks and the live reference gate. The base P05
+generator is maintained in [testdata/qwen](../qwen/README.md); no generator needs
+ignored research files.
+
 `P01/manifest.json` pins the exact decoded regex, immutable source revision,
 source settings, tokenizers 0.22.2 wheel hash, generated Unicode table hash, and
 fixture hash. Ordinary Go tests are offline and verify these hashes.

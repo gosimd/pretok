@@ -19,7 +19,8 @@
   "unicode_profile": "Membership of L, N, s and contraction folds from all Unicode scalars in the pinned native oracle; independent of Go unicode.Version.",
   "case_count": 7738,
   "cases_sha256": "ff12d523e785755de377906fd4175e0245b953714a2defe97e5dbc6dcadbc4c0",
-  "tables_sha256": "bd790b9809d6a85b8301bc9239b21bb2c4c61eb3eccdfed1b5d4fff4385218bb",
+  "tables_sha256": "a5db1c69bd0cbfc115e6b8ae49851c2bd09637fabd52f6156138d09ec9ccb76a",
+  "generator_sha256": "342c69276ba8f5de50b08411ccc4f8d7d03ff8cc1cd99ba9a062aacfafd082ca",
   "matches_settings": {
     "behavior": "Removed",
     "invert": true

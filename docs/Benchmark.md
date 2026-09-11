@@ -314,11 +314,11 @@ Add any new scenarios to the common corpus. The runner selects P01–P25 per
 invocation. Broader support requires
 implementing and validating each additional pattern.
 
-P08/P11/P17/P18/P21/P23 use the same 21 batches. They are partial patterns, so match-at-offset is omitted. Each default complete run contains 1,500 samples (seven scan engines over 21 batches plus three compile engines, ten repetitions each, at least 500 ms per sample).
+The published P08/P11/P17/P18/P21/P23 runs used the same 21 batches. They are partial patterns, so match-at-offset is omitted. Each of those completed runs contains 1,500 samples (seven scan engines over 21 batches plus three compile engines, ten repetitions each, at least 500 ms per sample).
 
 The P12/P15 profiles are partial grouped alternatives. They share the existing corpus and omit match-at-offset. Their source manifests pin exact decoded strings and HF settings; `-verify-only` generates live reference matches and splits before comparing every request.
 
-P22 uses the shared 21 batches and is partial: its unmatched numeric/control gaps require distinct match-only and isolated Split outputs. The match-at diagnostic is omitted. A default complete run contains 1,500 samples including separate compilation timing.
+The published P22 run used 21 shared batches. P22 is partial: its unmatched numeric/control gaps require distinct match-only and isolated Split outputs. The match-at diagnostic is omitted. That completed run contains 1,500 samples including separate compilation timing. Current runs use the expanded 22-batch corpus; see the [runner instructions](../benchmark/README.md#build-and-run).
 
 P10 adds a shared `decimal` workload for successful anchored decimal remainders,
 bringing the common corpus to 22 batches. The mixed `synthetic` workload also

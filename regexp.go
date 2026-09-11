@@ -39,7 +39,8 @@ type Regexp struct {
 // Compile selects a prewritten plan by exact regex string. Unregistered strings,
 // including malformed expressions and unregistered equivalent spellings, return
 // nil and ErrUnsupportedPattern. No parsing, normalization, or fallback occurs.
-// See docs/Regexp.md for the currently supported expression.
+// See docs/SupportedPatterns.md for the supported exact expressions and
+// docs/Regexp.md for the release contract.
 func Compile(pattern string) (*Regexp, error) {
 	plan, ok := compile.Lookup(pattern)
 	if !ok {

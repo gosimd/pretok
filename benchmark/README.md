@@ -98,6 +98,10 @@ This measures regex boundaries/HF Split, not a complete tokenizer or BPE.
 
 ## Build and run
 
+For generator setup and clean-checkout validation, see
+[Reproducibility](../docs/Reproducibility.md). Measurement summaries elsewhere in
+this document retain the corpus sizes and revisions of their historical runs.
+
 Requirements: Go 1.27, a Rust toolchain compatible with the checked-in Cargo.lock
 (tested with Rust 1.90.0), and a C compiler for Oniguruma. Python is not needed for
 ordinary offline benchmark execution. The first Cargo build downloads dependencies;
@@ -127,8 +131,10 @@ benchmark/bin/benchreport -pattern P06 -output benchmark/runs/p06-my-run
 The default pattern is P05. Each invocation measures one pattern and records its
 ID in raw samples and environment metadata.
 
-Defaults are 10 samples, at least 500 ms each, all 21 corpus/size batches, eight
-scan engine/mode rows (seven for P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P22/P23) and three compilation rows. Expect roughly 15 minutes plus
+Defaults are 10 samples, at least 500 ms each, all 22 corpus/size batches, eight
+scan engine/mode rows for fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24
+(seven for all other patterns), and three compilation rows. This gives 1,790
+samples for fully covering patterns or 1,570 otherwise. Expect roughly 15 minutes plus
 correctness gates and warm-up. Engines execute sequentially, with reversed order
 on alternate rounds. All raw samples and environment hashes are retained. Existing
 output directories are never overwritten; choose a new `-output` for each run.
@@ -177,16 +183,16 @@ No corpus reference arrays are stored, loaded, or decompressed. Native reference
 construction, JSON transport, comparison, and reference disposal are outside the
 scan timer. Both runners refuse to measure batches that have not passed their
 reference gate. `matches` and `split` are separate oracle outputs and counters.
-The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P22/P23 omit
-`onig-at`: its gaps require a search operation. Iterator rows count matches;
-Split rows count matches plus gaps, so P02/P03/P07/P08/P11/P12/P15/P16/P17/P18/P21/P22/P23 output counts can differ.
+The match-at diagnostic remains limited to fully covering P01/P04/P05/P06/P09/P13/P19/P20/P24. All other patterns omit
+`onig-at`: partial patterns need their own search semantics. Iterator rows count matches;
+Split rows count matches plus gaps, so partial patterns can have different output counts.
 
 Small regression fixtures under `testdata/` remain independent of the mass-corpus
 pipeline: they support offline Go tests and guard the pinned Unicode/reference
 profile. Rust/HF dependencies are fixed by Cargo.lock; the actual binary hash is
-recorded in each run. P02–P04/P06–P09/P11–P13/P15–P24 reuse the P05 fixtures only to guard the native build,
-with their P05 expression. Their own HF references are generated live; no P02–P04/P06–P09/P11–P13/P15–P24
-fixture archives are required.
+recorded in each run. Every pattern except P01/P05 reuses the P05 fixtures only to guard the native
+build, with their P05 expression. Its own HF references are generated live; no
+additional fixture archives are required.
 
 ## Rebuild corpus inputs
 
