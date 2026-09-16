@@ -1,6 +1,6 @@
 # Benchmark design
 
-**Status:** implemented for scalar P01–P25, with five pinned natural-language pools,
+**Status:** implemented for P01–P25, with five pinned natural-language pools,
 two shared synthetic pools, Go measurement/orchestration, native Oniguruma/HF runners,
 exact-span correctness gates, and Markdown/JSON reports. Build and run instructions
 are in [benchmark/README.md](../benchmark/README.md). SIMD and an internal Go

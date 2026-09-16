@@ -5,26 +5,41 @@ specialized Go scanners. Compile once, then find byte boundaries without a regex
 engine in the scanning path.
 
 **Status:** all 25 exact strings in the [supported-pattern registry](docs/SupportedPatterns.md)
-are implemented and checked against pinned Hugging Face references. The current
-backend is scalar; SIMD is future work. The [v0.1.0 contract](docs/Regexp.md#v010-release-contract)
-is fixed, and the release is being prepared. This is not a publication announcement.
+are implemented and checked against pinned Hugging Face references. On supported
+SIMD builds, P01 `Split` uses a bounded rune buffer for UTF-8 conversion;
+token classification and boundary decisions remain scalar. The
+[v0.1.0 public contract](docs/Regexp.md#v010-release-contract) is unchanged.
 
 ## Installation
 
-Requires **Go 1.27.0 or newer**. The Go module has no external dependencies;
-using the library requires neither Rust, Python nor a native regex library.
+Requires **Go 1.27.0 or newer** and `github.com/gosimd/unicode v0.1.2` (resolved by
+Go modules). Using the library requires neither Rust, Python nor a native regex
+library. The dependency is pinned in `go.mod` and verified through `go.sum`.
 
-Once the v0.1.0 tag is published, install that version with:
+Install the v0.1.0 version with:
 
 ```sh
 go get github.com/gosimd/pretok@v0.1.0
 ```
 
-Before publication, the examples and tests can be run from this checkout:
+The P01 buffering optimization described here is in the current checkout; it is
+not part of the v0.1.0 tag.
+
+The examples and tests for the current checkout can be run with:
 
 ```sh
 GOWORK=off go test -mod=readonly ./...
 ```
+
+Build your application with `GOEXPERIMENT=simd` to enable gosimd/unicode's supported
+ARM64/AMD64 SIMD paths. Without this setting, or on unsupported configurations,
+P01 keeps its portable byte scanner with the same boundaries.
+
+On eligible builds, P01 `Split` validates the entire input, then decodes into a local 1,024-rune
+(4 KiB) buffer. Tokens can cross buffers. Inputs shorter than 256 bytes use the
+existing byte scanner. Public `Cursor` keeps its independent, copyable byte-scanning
+state; it does not borrow mutable rune scratch. Other patterns keep their existing
+scanners.
 
 ## Quick start
 
@@ -114,12 +129,14 @@ Regex support alone does not establish complete tokenizer compatibility.
 
 ## Validation and performance
 
-Ordinary Go tests run offline from the checked-in files:
+After the pinned Go dependency has been downloaded, ordinary tests run offline:
 
 ```sh
 GOWORK=off go test -mod=readonly ./...
 GOWORK=off go test -mod=readonly -race ./...
 GOWORK=off go vet -mod=readonly ./...
+GOWORK=off GOEXPERIMENT=simd go test -mod=readonly ./...
+GOWORK=off GOEXPERIMENT=simd go test -mod=readonly -race ./...
 ```
 
 [Reproducibility](docs/Reproducibility.md) describes the pinned Unicode tables,
@@ -132,13 +149,17 @@ from isolated pieces, fresh from reused destinations, and natural text from
 synthetic cases. Their machine, toolchain, source and corpus fingerprints scope
 the measurements; historical results are not measurements of every later commit.
 
+The [P01 integration report](benchmark/results/P01/2026-09-16-apple-m5-rune-split/REPORT.md)
+measures the buffered public Split against its previous implementation, including
+ordinary-build controls, short inputs, fresh/reused output and known regressions.
+
 ## Repository guide
 
 | Path | Purpose |
 | --- | --- |
 | [regexp.go](regexp.go) | Public API |
 | [internal/compile](internal/compile) | Exact-string registry and plan selection |
-| [internal/scan](internal/scan) | Scalar scanners and pinned Unicode tables |
+| [internal/scan](internal/scan) | Scanner plans, P01 rune buffering and pinned Unicode tables |
 | [testdata](testdata) | Pattern provenance, generators and regression fixtures |
 | [benchmark](benchmark) | Shared corpus, native reference runner and reports |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |

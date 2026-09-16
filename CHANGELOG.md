@@ -1,9 +1,17 @@
 # Changelog
 
-## v0.1.0 — Unreleased
+## Unreleased
 
-First planned release of `github.com/gosimd/pretok`. Requires Go 1.27.0 or newer.
-Publication and its date will be recorded when the release tag is published.
+- P01 `Split` validates the complete input, then scans 1,024-rune windows decoded
+  by `github.com/gosimd/unicode v0.1.2`. Supported `GOEXPERIMENT=simd` builds use
+  SIMD UTF-8 kernels; other configurations retain byte scanning.
+- Rune scratch is local to each call. Short inputs keep byte scanning; public
+  cursor-copy semantics, byte boundaries, error atomicity and the v0.1.0 API
+  remain unchanged.
+
+## v0.1.0
+
+First release of `github.com/gosimd/pretok`. Requires Go 1.27.0 or newer.
 
 ### Included
 

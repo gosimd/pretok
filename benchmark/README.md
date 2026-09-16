@@ -1,6 +1,6 @@
 # Cross-engine benchmark
 
-The offline suite compares the public scalar `pretok` API with native Oniguruma
+The offline suite compares the public `pretok` API with native Oniguruma
 and HF Tokenizers 0.22.2 for the exact P01–P25 regexes. It contains five approximately
 1 MiB natural text pools and shared synthetic diagnostic pools. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).

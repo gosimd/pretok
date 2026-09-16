@@ -7,7 +7,9 @@ patterns into specialized scanners. Follow the design and status in `README.md`.
 The [supported-pattern registry](docs/SupportedPatterns.md) is the canonical
 documentation list of implemented exact strings and tokenizer examples. Update it
 when adding support, preserving exact decoded strings and pinned source links.
-SIMD remains unsupported. Keep compatibility claims scoped to registered patterns
+P01 Split uses gosimd/unicode v0.1.2 for bounded rune decoding and optional SIMD
+UTF-8 processing; classification and boundary decisions remain scalar. Keep
+compatibility claims scoped to registered patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
 Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary
@@ -137,6 +139,8 @@ include regressions rather than combining unrelated best-case measurements.
 Inspect the current checkout and preserve unrelated user changes. Once Go code
 exists, format changed Go files and run relevant tests; use `go test ./...` for
 the full suite and `go test -race ./...` when concurrency changes warrant it.
+For P01 buffering changes, run both ordinary and `GOEXPERIMENT=simd` tests and race
+checks, using the pinned published Unicode dependency with `GOWORK=off`.
 Exercise scalar and available ISA paths using the controls actually implemented
 in the repository. Cross-compilation checks buildability, not runtime parity.
 

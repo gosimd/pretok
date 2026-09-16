@@ -9,6 +9,7 @@ import (
 
 	"github.com/gosimd/pretok/internal/compile"
 	"github.com/gosimd/pretok/internal/scan"
+	simdutf8 "github.com/gosimd/unicode/utf8"
 )
 
 var (
@@ -67,7 +68,13 @@ func (r *Regexp) Cursor(src string) (Cursor, error) {
 	if r == nil || r.plan == nil {
 		return Cursor{}, ErrUninitialized
 	}
-	if !utf8.ValidString(src) {
+	var valid bool
+	if r.plan.HasRuneSplit() && len(src) >= scan.RuneSplitMinBytes {
+		valid = simdutf8.ValidString(src)
+	} else {
+		valid = utf8.ValidString(src)
+	}
+	if !valid {
 		return Cursor{}, ErrInvalidUTF8
 	}
 	return Cursor{plan: r.plan, src: src}, nil
@@ -117,6 +124,9 @@ func (r *Regexp) Split(src string, dst []Span) ([]Span, error) {
 	if err != nil {
 		return dst, err
 	}
+	if r.plan.HasRuneSplit() && len(src) >= scan.RuneSplitMinBytes {
+		return splitRuneWords(src, dst), nil
+	}
 	previous := 0
 	for span, ok := cursor.Next(); ok; span, ok = cursor.Next() {
 		if span.Start > previous {
@@ -129,4 +139,16 @@ func (r *Regexp) Split(src string, dst []Span) ([]Span, error) {
 		dst = append(dst, Span{Start: previous, End: len(src)})
 	}
 	return dst, nil
+}
+
+// Keep the scratch in a separate call so other patterns and short inputs do not
+// acquire a large stack frame. Validation has finished before any destination
+// writes; neither the rune window nor input escapes the call.
+func splitRuneWords(src string, dst []Span) []Span {
+	var buffer [scan.RuneBufferSize]rune
+	cursor := scan.NewQwenMarksCursor(src, buffer[:])
+	for start, end, ok := cursor.Next(); ok; start, end, ok = cursor.Next() {
+		dst = append(dst, Span{Start: start, End: end})
+	}
+	return dst
 }

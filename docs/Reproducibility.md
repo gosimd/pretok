@@ -6,17 +6,29 @@ input to the library, tests, generators or benchmark runner.
 
 ## Ordinary tests
 
-From a clean checkout, Go 1.27.0 or newer is sufficient:
+From a clean checkout, use Go 1.27.0 or newer. Download the pinned Go dependency
+once (network access or a populated module cache is needed for this step):
+
+```sh
+GOWORK=off GOPROXY=https://proxy.golang.org go mod download
+```
+
+The tests then run offline, without sibling-module replacements:
 
 ```sh
 GOWORK=off go test -mod=readonly ./...
 GOWORK=off go vet -mod=readonly ./...
+GOWORK=off GOEXPERIMENT=simd go test -mod=readonly ./...
+GOWORK=off GOEXPERIMENT=simd go test -mod=readonly -race ./...
 ```
 
 The tests read the existing P05 and P01 regression fixtures and pinned Unicode
 profiles, and run inline regressions and independent differential checks for the
 other patterns. They do not contact Hugging Face or invoke Python/Rust. The
 [executable examples](../example_test.go) run as part of `go test`.
+P01 also compares its buffered decoder path against the byte scanner at tiny
+lookahead capacities and 1K/2K/4K/8K rune boundaries. SIMD kernel selection belongs
+to `gosimd/unicode v0.1.2`; no local checkout of that module is required.
 
 ## Unicode tables and existing regression fixtures
 

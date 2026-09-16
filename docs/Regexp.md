@@ -7,12 +7,14 @@ detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
 **Status:** the [Go API](../regexp.go) supports the 25 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
 expressions and tokenizer examples. Unregistered strings, including equivalent
-spellings, return `ErrUnsupportedPattern`. SIMD is not implemented.
+spellings, return `ErrUnsupportedPattern`. P01 `Split` uses bounded rune decoding;
+`GOEXPERIMENT=simd` enables supported SIMD UTF-8 kernels from gosimd/unicode.
+Character classification and token-boundary selection remain scalar.
 
 ## v0.1.0 release contract
 
-This document fixes the public contract for the planned **v0.1.0** release; it
-does not announce publication. The API, compilation, iteration, splitting, and
+This document fixes the public contract for **v0.1.0**. The API, compilation,
+iteration, splitting, and
 ownership sections below are normative. Pattern-specific sections describe the
 selected-match semantics. The release's [supported-pattern registry](SupportedPatterns.md)
 and [pinned profiles](../testdata/patterns/README.md), read at the release revision,
@@ -131,6 +133,30 @@ a multibyte whitespace character.
 
 P01/P05 cover all valid Unicode input, so their `Cursor` and `Split` outputs
 coincide. [P02](SupportedPatterns.md#p02) exercises their distinct gap-handling contracts.
+
+### P01 buffered splitting
+
+On eligible SIMD builds, for P01 inputs of at least 256 bytes, `Cursor` creation validates the whole input
+using `gosimd/unicode/utf8.ValidString`. `Split` then uses
+[`QwenMarksCursor`](../internal/scan/rune_words.go) and `DecodeValidInto` to fill a
+local 1,024-rune buffer without validating the same bytes again. The buffer stays
+within the `Split` call; it is not stored in the compiled plan or public cursor.
+No pool or caller-managed scratch is required. Destination allocation still
+depends on caller capacity.
+
+The buffer boundary is independent of token boundaries. Contraction lookahead
+survives refills, and whitespace rollback reuses the current decoded window when
+possible. Byte positions are reconstructed from rune widths. The pinned character
+tables, contraction predicates and whitespace endpoint decision are shared with
+the byte scanner. Full-input validation precedes every destination write, so a
+malformed suffix leaves even unused destination backing storage unchanged.
+
+Public `Cursor.Next` retains byte scanning and independent value-copy progress.
+Short P01 inputs and other patterns retain their byte scanners. The Unicode
+dependency selects SIMD kernels only in supported `GOEXPERIMENT=simd` builds;
+other configurations retain byte scanning. The buffer is selected only when
+Unicode has SIMD conversion available (ARM64 or AMD64 with AVX2). Direct internal
+tests also exercise the buffered algorithm with portable conversion.
 
 P02's `asciiTriplet` matches exactly three consecutive ASCII digits. It groups a
 long digit run from the left, without consuming an incomplete group. Unicode

@@ -8,6 +8,7 @@ type Plan struct {
 	match     func(src string, pos int) int
 	find      func(src string, pos int) (int, int)
 	findState func(src string, pos int, state State) (int, int, State)
+	runeSplit bool
 }
 
 // State is cursor-owned execution metadata. Passing it by value keeps cursor
@@ -18,6 +19,10 @@ type State struct {
 
 func (p *Plan) Match(src string, pos int) int { return p.match(src, pos) }
 func (p *Plan) HasSearch() bool               { return p.find != nil || p.findState != nil }
+
+// HasRuneSplit reports whether the plan has the P01 buffered splitting path.
+// Match/Find remain the portable byte-scanning implementation for cursors.
+func (p *Plan) HasRuneSplit() bool { return runeSIMDBuild && p.runeSplit }
 
 // Find receives the entire subject and the start of this search (the previous
 // match's end, initially zero). An anchored plan may fail without searching
@@ -45,7 +50,11 @@ func Qwen() Plan {
 }
 
 // QwenMarks builds P01 with marks in words and excluded from symbol runs.
-func QwenMarks() Plan { return qwen(true, 1) }
+func QwenMarks() Plan {
+	p := qwen(true, 1)
+	p.runeSplit = runeDecodingEnabled()
+	return p
+}
 
 // QwenNumbers varies only the Unicode-number bound: 3 for P24, -1 for P20.
 func QwenNumbers(max int) Plan { return qwen(false, max) }

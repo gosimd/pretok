@@ -24,19 +24,29 @@ func (contractionSet) match(src string, pos int) int {
 	r, size := runeAt(src, pos+1)
 	r = foldContraction(r)
 	end := pos + 1 + size
-	switch r {
-	case 's', 't', 'm', 'd':
+	if singleContraction(r) {
 		return end
-	case 'r', 'v', 'l':
-		if end < len(src) {
-			next, width := runeAt(src, end)
-			next = foldContraction(next)
-			if (r == 'r' || r == 'v') && next == 'e' || r == 'l' && next == 'l' {
-				return end + width
-			}
+	}
+	if suffix := contractionSuffix(r); suffix != 0 && end < len(src) {
+		next, width := runeAt(src, end)
+		if foldContraction(next) == suffix {
+			return end + width
 		}
 	}
 	return pos
+}
+
+// Both byte and rune readers use these predicates on already-folded runes.
+func singleContraction(r rune) bool { return r == 's' || r == 't' || r == 'm' || r == 'd' }
+
+func contractionSuffix(r rune) rune {
+	switch r {
+	case 'r', 'v':
+		return 'e'
+	case 'l':
+		return 'l'
+	}
+	return 0
 }
 
 // prefixedLetters implements the optional non-CR/LF/L/N prefix followed by
@@ -234,10 +244,15 @@ func (lineEndWhitespace) find(src string, pos int) (int, int) {
 
 func (w whitespaceRun) match(src string, pos int) int {
 	run := w.observe(src, pos)
+	return run.matchEnd(pos, len(src))
+}
+
+// matchEnd preserves the priority of the three shared whitespace alternatives.
+func (run whitespaceObservation) matchEnd(pos, inputLen int) int {
 	if run.lastCRLFEnd >= 0 {
 		return run.lastCRLFEnd
 	}
-	if run.end == len(src) {
+	if run.end == inputLen {
 		return run.end
 	}
 	if run.lastRuneStart > pos {
