@@ -1,0 +1,120 @@
+{
+  "cpu": "Apple M5",
+  "os": "Darwin 25.6.0 Darwin Kernel Version 25.6.0: Fri Jul 31 19:16:20 PDT 2026; root:xnu-12377.161.14~5/RELEASE_ARM64_T8142",
+  "gomaxprocs": 1,
+  "affinity": "not pinned; macOS scheduler",
+  "goarm64": "v8.0",
+  "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+  "corpus_manifest_sha256": "83b6efb3159c9c28e42227780eed8f18941fc7c29b455fd78ccfbe6d096efa3c",
+  "oracle": "HF Tokenizers 0.22.2, onig crate 6.5.1 (locked native runner)",
+  "date": "2026-09-16",
+  "go": "go1.27.0",
+  "baseline_commit": "dff9a0b2bc0cfd8f554b1ec0266db78b1ebab33b",
+  "dependency": "github.com/gosimd/unicode v0.1.2",
+  "unicode_commit": "fbbb32fda3d17c69e923b3fbdc75af0aa99998a8",
+  "goexperiment": [
+    "",
+    "simd"
+  ],
+  "samples": 600,
+  "rounds": 5,
+  "min_time_ms": 150,
+  "scratch_runes": 1024,
+  "minimum_input_bytes": 256,
+  "notes": "Interleaved sequential samples from four persistent Go processes. All paths use the public API. The local stack buffer is initialized inside each Split call; no pool or prepared rune worker. CPU/OS identity from the prior same-host study.",
+  "sha256": {
+    "go.mod": "86c0bf20f6d431ef46ce5d2fe1374f1068320025a3df3a0bf392fa1a971d026a",
+    "regexp.go": "393cbc1135e7ab4e8a0bc4a3bad5aab0d9f9c533689aec2b9abb72797154cdc2",
+    "internal/scan/plan.go": "011d4bcf7eabf371d61b65f2befbbc3987091d3c6baed00df5b6c0e94bd0831f",
+    "internal/scan/constructions.go": "e8fd8d5884ac30f1764332427e4c249d498c68980c0a5076b233cb8c9404e0cb",
+    "go.sum": "d41f9a075785c187d980f4ef24ec7052dab1acedf69bb2aa7d23a7e28ee6553e",
+    "rune_words_test.go": "804ec577b15f2c9ec47dd55cb729b05b34c0cdb36426bccd1866cb18057e721c",
+    "internal/scan/rune_words.go": "59521b447e238b72b135b52b606258e8ff3aa12536223e6cb9104ec3e5c0ce10",
+    "internal/scan/rune_words_test.go": "6ca98d4772b0db62511e0519869d4b2c9fcc8d6be589d2b8407458a6013a4dcd",
+    "internal/scan/rune_backend_simd.go": "0066114ab43b988f861463d481f071fc5e1ed76b30f50c0d5b482852e63ac4e3",
+    "internal/scan/rune_backend_fallback.go": "8b49d18849f5bd13c36e230828bab3f1e6b4df782b0b919135ba73023cd58df4",
+    "old-go": "50ec4f085440e1397c8517c707f088773082f5cb6076aebbffa9bec64f0dac9c",
+    "old-simd": "8f6a8f2908c6ccd32cd960a62c3c8f0c283292ea4b7c3b6cc063f12d53a7558b",
+    "new-go": "12dae9e937b3f65682cc2d4c4361bf57b7e0ec907fd287d0ec67551e383e474f",
+    "new-simd": "20fd0ee6c4f4650e2ebc1839f87f42a032cbaff1aab07660902c989f2f386004",
+    "harness": "7284867e3b389e5387c8d3b572a141fddbdb7d85f26712d201e1a90815921d56",
+    "native_reference": "4417fb865f391bf55d4dd5e1fc485670e72ab5efe41a2a3abeff0e479731bdff",
+    "samples.jsonl": "12af773f51936bf7037d4d23691caa8dfc71c6bcbd3037d490286c81568af031",
+    "gates.json": "fafb0fd5cbf651c6f47447be771cb844e7712a757bbe4450ebdd009f7e9ee670",
+    "complete.json": "bd0125ebae1a5e7bd82648ac40320e5203b134ea124ceb8ae16a4cf5713d34b2",
+    "summary.csv": "c50036f667747a86db5552c2e2d14964dd353ac187b44b36ec8b961c8bf486cd"
+  },
+  "verification": [
+    "All 25 pattern test suites pass in ordinary and SIMD builds",
+    "Race and vet pass in both builds",
+    "392207 SIMD fuzz executions without mismatch",
+    "Linux amd64 SIMD cross-build passed; not runtime parity",
+    "Clean source-only reconstruction passes tests offline in both builds"
+  ],
+  "implementation_commit": "67142ce7a31fe90b411a1163ff49e8100a6f26ba",
+  "completion": {
+    "complete": true,
+    "samples": 600,
+    "rounds": 5,
+    "min_time_ms": 150,
+    "workers": 1
+  },
+  "correctness_gates": {
+    "old-go": {
+      "go": "go1.27.0",
+      "oracle": {
+        "batches": 22,
+        "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "fixtures": 26820,
+        "full_coverage": true,
+        "ready": true,
+        "tokenizers": "0.22.2"
+      },
+      "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+      "ready": true,
+      "requests": 163066
+    },
+    "new-go": {
+      "go": "go1.27.0",
+      "oracle": {
+        "batches": 22,
+        "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "fixtures": 26820,
+        "full_coverage": true,
+        "ready": true,
+        "tokenizers": "0.22.2"
+      },
+      "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+      "ready": true,
+      "requests": 163066
+    },
+    "old-simd": {
+      "go": "go1.27.0-X:simd",
+      "oracle": {
+        "batches": 22,
+        "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "fixtures": 26820,
+        "full_coverage": true,
+        "ready": true,
+        "tokenizers": "0.22.2"
+      },
+      "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+      "ready": true,
+      "requests": 163066
+    },
+    "new-simd": {
+      "go": "go1.27.0-X:simd",
+      "oracle": {
+        "batches": 22,
+        "fixture_pattern": "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}\\p{M}]+|\\p{N}| ?[^\\s\\p{L}\\p{M}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+        "fixtures": 26820,
+        "full_coverage": true,
+        "ready": true,
+        "tokenizers": "0.22.2"
+      },
+      "pattern_sha256": "00431aed57e696b747435f734d1e3b9b1bfd931a121fb5cac7129e97c181e9ba",
+      "ready": true,
+      "requests": 163066
+    }
+  }
+}

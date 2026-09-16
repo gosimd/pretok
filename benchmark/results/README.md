@@ -3,6 +3,13 @@
 Store only selected, completed measurements here. Local verification, smoke,
 interrupted, and exploratory runs belong in ignored `benchmark/runs/`.
 
+The [integrated P01 rune-splitting comparison](P01/2026-09-16-apple-m5-rune-split/REPORT.md)
+uses the published gosimd/unicode v0.1.2 dependency and the public API, including
+per-call stack scratch. It compares ordinary and SIMD builds against the same
+baseline with 600 interleaved samples, and includes regressions. Shared reproduction tools live in
+`benchmark/compare/`. Public Cursor keeps byte scanning; its long P01 inputs use SIMD
+validation on eligible builds.
+
 Organize published results by exact pattern ID, then date, machine, and backend:
 
 ```text
