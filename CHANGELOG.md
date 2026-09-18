@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add `CompileJSON`, immutable `Pipeline`, `Walk`, `WalkText`, `WalkTextUnsafe`,
+  and callback-scoped `Piece.Text` / `Piece.OriginalRange`. Pipelines support the nine documented
+  built-ins plus exact-registry/literal `Split` and `ByteLevel`; see
+  [the pipeline contract](docs/Pipeline.md). Text-only walking skips output
+  alignment construction while preserving stage context. `WalkText` copies strings
+  for safe retention; `WalkTextUnsafe` avoids defensive copies but requires
+  `strings.Clone` inside the callback before retaining or asynchronously using text.
+- Add HF Tokenizers 0.23.2 pipeline fixtures, built-in Unicode tables, offset
+  regressions, concurrent/reentrant execution tests and allocation benchmarks.
+  These are separate from the existing regex profile pinned to HF 0.22.2.
 - P01 `Split` validates the complete input, then scans 1,024-rune windows decoded
   by `github.com/gosimd/unicode v0.1.2`. Supported `GOEXPERIMENT=simd` builds use
   SIMD UTF-8 kernels; other configurations retain byte scanning.

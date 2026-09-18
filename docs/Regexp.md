@@ -20,7 +20,7 @@ selected-match semantics. The release's [supported-pattern registry](SupportedPa
 and [pinned profiles](../testdata/patterns/README.md), read at the release revision,
 define its exact 25 supported strings and reference behavior.
 
-The public surface consists of `Regexp`, `Compile`, `Cursor`, `Cursor.Next`,
+The Regexp public surface consists of `Regexp`, `Compile`, `Cursor`, `Cursor.Next`,
 `Span`, `Regexp.Cursor`, `Regexp.Split`, and the three error sentinels
 `ErrUnsupportedPattern`, `ErrUninitialized`, and `ErrInvalidUTF8`. `Cursor` names
 both a type and a method of `Regexp`; there is no package-level `Cursor` or

@@ -4,6 +4,14 @@
 specialized Go scanners. Compile once, then find byte boundaries without a regex
 engine in the scanning path.
 
+The current checkout also provides [`CompileJSON`, `Pipeline.Walk`,
+`Pipeline.WalkText`, and `Pipeline.WalkTextUnsafe`](docs/Pipeline.md) for HF
+pre-tokenizer configurations, including text transformations and original
+byte-offset mapping. This additive
+API is unreleased; the existing `Regexp` contract remains unchanged.
+`WalkText` strings can be retained; `WalkTextUnsafe` avoids defensive copies and
+lends strings only for the duration of the callback.
+
 **Status:** all 25 exact strings in the [supported-pattern registry](docs/SupportedPatterns.md)
 are implemented and checked against pinned Hugging Face references. On supported
 SIMD builds, P01 `Split` uses a bounded rune buffer for UTF-8 conversion;
@@ -117,9 +125,11 @@ lists exact expressions, stable P01–P25 IDs and pinned tokenizer examples.
 
 ## Integration boundary
 
-The library handles regex boundaries only. It does not implement BPE, vocabulary
-lookup, token IDs, special tokens, normalization, ByteLevel mapping or a complete
-Hugging Face tokenizer pipeline. There is no generic regex fallback.
+`Regexp` handles regex boundaries only. The separate [Pipeline API](docs/Pipeline.md)
+adds built-in pre-tokenizers, stage composition, Metaspace and ByteLevel text
+mapping. The library does not implement BPE, vocabulary lookup, token IDs,
+special-token matching, Unicode normalization, Encoding postprocessing, or a
+complete Hugging Face tokenizer. There is no generic regex fallback.
 
 `Split` implements isolated splitting with unmatched gaps retained. Other HF
 split behaviors and `invert` settings are not inferred from a pattern. When
@@ -158,6 +168,8 @@ ordinary-build controls, short inputs, fresh/reused output and known regressions
 | Path | Purpose |
 | --- | --- |
 | [regexp.go](regexp.go) | Public API |
+| [pipeline.go](pipeline.go) | Compiled JSON pipeline and callback-scoped pieces |
+| [internal/pipeline](internal/pipeline) | Stage execution, private buffers, alignment and HF built-in classes |
 | [internal/compile](internal/compile) | Exact-string registry and plan selection |
 | [internal/scan](internal/scan) | Scanner plans, P01 rune buffering and pinned Unicode tables |
 | [testdata](testdata) | Pattern provenance, generators and regression fixtures |

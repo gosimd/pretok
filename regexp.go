@@ -1,6 +1,8 @@
-// Package pretok compiles supported pre-tokenization regular expressions into
-// specialized scanners that preserve the input text and return byte spans.
-// Compilation uses exact-string lookup, without parsing or a regex fallback.
+// Package pretok compiles supported pre-tokenization regular expressions and
+// HF pre-tokenizer configurations into specialized scanners. Regexp preserves
+// input bytes and returns spans; Pipeline can transform text and map offsets
+// through callback-scoped pieces. Regex compilation uses exact-string lookup,
+// without parsing or a general regex fallback.
 package pretok
 
 import (
@@ -18,7 +20,8 @@ var (
 	ErrUnsupportedPattern = errors.New("pretok: unsupported pattern")
 	// ErrInvalidUTF8 means the supplied input is not valid UTF-8.
 	ErrInvalidUTF8 = errors.New("pretok: invalid UTF-8")
-	// ErrUninitialized means a nil or zero-value Regexp was used for scanning.
+	// ErrUninitialized means a nil or zero-value Regexp or Pipeline was used.
+	// Its historical error text is retained for compatibility.
 	ErrUninitialized = errors.New("pretok: uninitialized regexp")
 )
 

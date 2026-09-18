@@ -1,0 +1,11 @@
+internal/pipeline/tables.go contains Unicode script ranges derived from
+Hugging Face Tokenizers 0.23.2, modified by merging adjacent ranges and applying
+the pre-tokenizer's script adaptations. Upstream source:
+https://github.com/huggingface/tokenizers/blob/v0.23.2/tokenizers/src/pre_tokenizers/unicode_scripts/scripts.rs
+
+The HuggingFace Team. Licensed under the Apache License, Version 2.0.
+A copy is included in testdata/pipeline/LICENSE.tokenizers.
+
+Upstream identifies the script data generator as the SentencePiece Unicode
+scripts generator, with Rust adaptation by Narsil. Existing repository code
+remains under the license in LICENSE.
