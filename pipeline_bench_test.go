@@ -11,10 +11,10 @@ var pipelineSink int
 
 func BenchmarkPipeline(b *testing.B) {
 	configs := []struct{ name, config string }{
-		{"SplitByteLevel", pipelineExample},
-		{"Whitespace", `{"type":"Whitespace"}`},
-		{"ByteLevel", `{"type":"ByteLevel"}`},
-		{"Metaspace", `{"type":"Metaspace"}`},
+		{pipelineExampleName, pipelineExample},
+		{"Whitespace/default", `{"type":"Whitespace"}`},
+		{"ByteLevel/prefix=true,trim=true,regex=true", `{"type":"ByteLevel"}`},
+		{"Metaspace/prepend=always,split=true,replacement=U+2581", `{"type":"Metaspace"}`},
 	}
 	inputs := []struct{ name, text string }{
 		{"short_ascii", "Hello, world! 123"},
@@ -102,12 +102,14 @@ func BenchmarkPipeline(b *testing.B) {
 }
 
 func BenchmarkCompileJSON(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		p, err := pretok.CompileJSON([]byte(pipelineExample))
-		if err != nil {
-			b.Fatal(err)
+	b.Run(pipelineExampleName, func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			p, err := pretok.CompileJSON([]byte(pipelineExample))
+			if err != nil {
+				b.Fatal(err)
+			}
+			_ = p
 		}
-		_ = p
-	}
+	})
 }

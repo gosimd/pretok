@@ -165,6 +165,73 @@ internal ranges through HF's token-offset conversion. Built-in Unicode classes
 come from those exact components; they are separate from the existing HF 0.22.2
 regex profile. Compatibility is scoped to the documented settings and evidence.
 
+### Scenario coverage
+
+The existing [oracle test](../pipeline_test.go) runs all **4,475 cases** through
+Walk, WalkText and WalkTextUnsafe. It compares transformed text, source ranges,
+internal byte-range mappings and retained WalkText strings against the recorded
+HF 0.23.2 expectations. Names follow
+`TestPipelineHFOracle/<component>/<settings>/<case>`.
+
+The table counts top-level fixture configurations; component occurrences inside
+Sequence are additional coverage, not included in the individual component rows.
+Counts describe existing evidence, not exhaustive coverage of every input.
+Test groups below are relative to `TestPipelineHFOracle/`; benchmark groups are
+relative to [`BenchmarkPipeline/`](../pipeline_bench_test.go).
+
+| Scenario / test group | HF cases / distinct configurations | Settings covered by oracle fixtures | Existing execution benchmarks |
+| --- | --- | --- | --- |
+| `BertPreTokenizer/` | 31 / 1 | Default behavior | None |
+| `CharDelimiterSplit/` | 93 / 3 | Delimiters `x`, `é`, U+0020 | None |
+| `Digits/` | 62 / 2 | `individual=false` and `true` | None |
+| `Metaspace/` | 559 / 18 | Three prepend schemes × two split modes × replacements `▁`, `_`, `é` | `Metaspace/prepend=always,split=true,replacement=U+2581/` only |
+| `Punctuation/` | 155 / 5 | All five split behaviors | None |
+| `Sequence/` | 1,310 / 843 | Empty sequence, nine fixed compositions, 1,000 random compositions; no nested Sequence oracle cases | `Sequence/Split_ByteLevel-9c89680975f8/` only |
+| `UnicodeScripts/` | 31 / 1 | Default behavior | None |
+| `Whitespace/` | 31 / 1 | Default behavior | `Whitespace/default/` |
+| `WhitespaceSplit/` | 31 / 1 | Default behavior | None |
+| `Split/` | 2,015 / 63 | All 25 registered patterns in isolated mode; five behaviors × invert for two regexes and two literals | Only inside the sequence above |
+| `ByteLevel/` | 126 / 6 | Four prefix/regex combinations with trim=true; two long cases with trim=false | `ByteLevel/prefix=true,trim=true,regex=true/` only |
+| `Identity/` | 31 / 1 | JSON null | None |
+
+Every listed execution benchmark has the same four existing inputs
+(`short_ascii`, `short_mixed`, `long_ascii`, `long_mixed`) and three methods
+(`Walk`, `WalkText`, `WalkTextUnsafe`), giving 48 measured combinations.
+Compilation has one existing benchmark:
+`BenchmarkCompileJSON/Sequence/Split_ByteLevel-9c89680975f8`.
+Renaming these cases does not add workloads or change their timed operations.
+
+Examples of individual oracle cases:
+
+```text
+TestPipelineHFOracle/BertPreTokenizer/default/punctuation_symbols_emoji
+TestPipelineHFOracle/CharDelimiterSplit/delimiter=U+00E9/repeated_accent
+TestPipelineHFOracle/Digits/individual=true/mixed_number_categories
+TestPipelineHFOracle/Sequence/Split_ByteLevel-9c89680975f8/letters_digits_accent
+```
+
+Select scenarios from the repository root:
+
+```sh
+GOWORK=off go test -mod=readonly -run '^TestPipelineHFOracle/Digits/' -v .
+GOWORK=off go test -mod=readonly -run '^TestPipelineHFOracle/Metaspace/' .
+GOWORK=off go test -mod=readonly -run '^$' -bench '^BenchmarkPipeline/Whitespace/' -benchmem .
+```
+
+The [fixture guide](../testdata/pipeline/README.md) defines the naming scheme and
+regeneration process. Full configuration and input remain available in failure
+output, including for sequences identified by a short settings hash.
+
+Existing gaps remain visible: most standalone component inputs are at most 28
+UTF-8 bytes, with long fixtures only for Metaspace and ByteLevel. Execution
+fuzzing covers three configurations; concurrency, cancellation and text ownership
+checks are concentrated on the Split/ByteLevel example. Six of the nine core
+built-ins have no dedicated execution benchmark. The broader
+[regex benchmark suite](../benchmark/README.md#regex-cross-engine-suite) does not
+substitute for those Pipeline measurements.
+
+### Integration limits
+
 No normalization, AddedToken matching, token IDs, BPE, decoder, postprocessor,
 Hub access, or full tokenizer.json loading is provided. In particular, calling
 Walk separately on segments around AddedTokens resets the source context. A

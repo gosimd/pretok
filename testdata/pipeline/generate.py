@@ -91,7 +91,52 @@ def ranges(text):
     return sorted(result)
 
 
-def capture(config, text):
+def config_name(config):
+    """Two Go subtest path segments: component and settings (ASCII, no slashes)."""
+    if config is None:
+        return "Identity/default"
+    kind = config["type"]
+    boolean = lambda value: str(value).lower()
+    codepoints = lambda text: "+".join(f"U+{ord(c):04X}" for c in text)
+    if kind == "Sequence":
+        children = config["pretokenizers"]
+        if not children:
+            settings = "empty"
+        else:
+            # Stage names alone do not distinguish their settings. A canonical
+            # JSON digest keeps even random compositions short and unambiguous.
+            canonical = json.dumps(config, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            settings = "_".join(c["type"] for c in children) + "-" + digest(canonical.encode())[:12]
+    elif kind == "Digits":
+        settings = "individual=" + boolean(config.get("individual_digits", False))
+    elif kind == "CharDelimiterSplit":
+        settings = "delimiter=" + codepoints(config["delimiter"])
+    elif kind == "Metaspace":
+        settings = ("prepend=" + config.get("prepend_scheme", "always")
+                    + ",split=" + boolean(config.get("split", True))
+                    + ",replacement=" + codepoints(config.get("replacement", "▁")))
+    elif kind == "Punctuation":
+        settings = "behavior=" + config.get("behavior", "Isolated")
+    elif kind == "ByteLevel":
+        settings = ("prefix=" + boolean(config.get("add_prefix_space", True))
+                    + ",trim=" + boolean(config.get("trim_offsets", True))
+                    + ",regex=" + boolean(config.get("use_regex", True)))
+    elif kind == "Split":
+        pattern = config["pattern"]
+        if "Regex" in pattern:
+            registry = json.loads((ROOT / "testdata/corpus_patterns.json").read_text())
+            ident = next(i for i, entry in enumerate(registry, 1) if entry["pattern"] == pattern["Regex"])
+            settings = f"regex=P{ident:02}"
+        else:
+            settings = "literal=" + codepoints(pattern["String"])
+        settings += ",behavior=" + config.get("behavior", "Isolated")
+        settings += ",invert=" + boolean(config.get("invert", False))
+    else:
+        settings = "default"
+    return kind + "/" + settings
+
+
+def capture(config, text, case_name):
     pre = None if config is None else pt.Whitespace()
     if pre is not None:
         pre.__setstate__(json.dumps(config).encode())
@@ -116,7 +161,8 @@ def capture(config, text):
             x, y = next(offsets)
             mapped.append([a, b, byte_at[x], byte_at[y]])
         piece["ranges"] = mapped
-    return {"config": config, "input": text, "pieces": result}
+    return {"config": config, "input": text, "pieces": result,
+            "name": config_name(config) + "/" + case_name}
 
 
 def fixtures():
@@ -124,8 +170,9 @@ def fixtures():
     configs += [{"type": name} for name in ["Whitespace", "WhitespaceSplit", "BertPreTokenizer", "UnicodeScripts"]]
     configs += [{"type": "Digits", "individual_digits": b} for b in (False, True)]
     configs += [{"type": "CharDelimiterSplit", "delimiter": c} for c in ["x", "é", " "]]
-    for entry in json.loads((ROOT / "testdata/corpus_patterns.json").read_text()):
-        configs.append({"type":"Split", "pattern":{"Regex":entry["pattern"]}, "behavior":"Isolated", "invert":False})
+    regex_configs = [{"type":"Split", "pattern":{"Regex":entry["pattern"]}, "behavior":"Isolated", "invert":False}
+                     for entry in json.loads((ROOT / "testdata/corpus_patterns.json").read_text())]
+    configs += regex_configs
     for behavior in ["Removed", "Isolated", "Contiguous", "MergedWithPrevious", "MergedWithNext"]:
         configs.append({"type": "Punctuation", "behavior": behavior})
         for pattern in [{"String": "--"}, {"String": "é"}, {"Regex": "[0-9]"}, {"Regex": "[0-9][0-9][0-9]"}]:
@@ -149,21 +196,35 @@ def fixtures():
     seeds = ["", "a", "ab12é", "é😀中", "  ", "\r\n\t", " a  b ", "a--b---c--",
              "a!!b$€🙂", "ééé", "▁a ▁b", "1234567x12", "a²Ⅳ٣b", "a_b\u200db",
              "e\u0301a", "日本ー語 abcПривет", "\u00a0x\u2028 y", "I'm I'M we're WE'RE", "\U0001e4d0 a"]
+    seed_names = ["empty", "ascii_letter", "letters_digits_accent", "multibyte_emoji_han",
+                  "only_spaces", "cr_lf_tab", "leading_repeated_trailing_spaces",
+                  "repeated_literal_delimiter", "punctuation_symbols_emoji", "repeated_accent",
+                  "existing_metaspace", "separated_digit_runs", "mixed_number_categories",
+                  "underscore_joiner", "combining_mark", "mixed_scripts", "unicode_whitespace",
+                  "contractions_case", "supplementary_letter"]
+    assert len(seed_names) == len(seeds)
     rng = random.Random(9271)
     alphabet = " a9é²!\n\r\t▁_中ー\u0301\u200d😀"
     seeds += ["".join(rng.choice(alphabet) for _ in range(rng.randrange(1, 14))) for _ in range(12)]
-    cases = [capture(c, text) for c in configs for text in seeds]
+    seed_names += [f"random_{i:04}" for i in range(1, 13)]
+    cases = []
+    for config in configs:
+        # P02/P16 occur both in the exact-registry sweep and the behavior matrix.
+        # Keep both existing cases without relying on Go's automatic #NN suffix.
+        prefix = "registry_" if any(config is c for c in regex_configs) else ""
+        cases += [capture(config, text, prefix + name) for name, text in zip(seed_names, seeds)]
     # Independently composed pipelines catch interactions that single-stage
     # fixtures and local Walk/WalkText parity cannot establish.
     choices = [c for c in configs if c and c["type"] != "Sequence"]
-    for _ in range(1000):
+    for i in range(1000):
         children = [rng.choice(choices) for _ in range(rng.randrange(1, 5))]
         config = {"type": "Sequence", "pretokenizers": children}
         text = "".join(rng.choice(alphabet) for _ in range(rng.randrange(1, 32)))
-        cases.append(capture(config, text))
+        cases.append(capture(config, text, f"random_composition_{i+1:04}"))
     # Buffer growth and long-piece tails, without quadratic all-range fixtures.
     for config in [byte, meta, {"type":"ByteLevel","add_prefix_space":True,"use_regex":True,"trim_offsets":False}]:
-        cases.append(capture(config, ("é 😀word123\n" * 257)))
+        cases.append(capture(config, ("é 😀word123\n" * 257), "long_transform_buffer_growth"))
+    assert len({case["name"] for case in cases}) == len(cases), "duplicate case name"
     data = (json.dumps(cases, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
     (HERE / "cases.json.gz").write_bytes(gzip.compress(data, mtime=0))
     return len(cases), digest(data)

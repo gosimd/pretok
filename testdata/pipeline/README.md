@@ -4,6 +4,35 @@
 offline against `cases.json.gz` and verify its decompressed SHA-256 and case count
 against `manifest.json`. The native oracle binary hash is also recorded.
 
+Each case has a `name` field with three slash-separated components:
+`<component>/<settings>/<input-case>`. The Go test uses it directly, for example:
+
+```text
+TestPipelineHFOracle/Digits/individual=true/mixed_number_categories
+TestPipelineHFOracle/Metaspace/prepend=first,split=true,replacement=U+2581/leading_repeated_trailing_spaces
+TestPipelineHFOracle/Sequence/Split_ByteLevel-9c89680975f8/letters_digits_accent
+```
+
+Names use ASCII without whitespace or extra slashes; delimiters and replacements
+use Unicode code points. Split regexes use the stable P01–P25 registry IDs.
+Non-empty sequences list stage types followed by the first 12 hex digits of
+SHA-256 over their configuration encoded as UTF-8 JSON with sorted keys, literal
+Unicode and compact separators. This distinguishes stage settings without putting
+the full JSON or regex into the test name; the exact configuration is still stored
+in `config`. Empty sequences use `Sequence/empty`.
+
+Fixed inputs have descriptive names; seeded inputs use `random_0001`–`random_0012`,
+and random compositions use `random_composition_0001`–`random_composition_1000`.
+Registry-sweep cases use the `registry_` input prefix to distinguish P02/P16 from
+their separate behavior-matrix cases. Long inputs use `long_transform_buffer_growth`.
+The generator and Go test reject duplicate names rather than relying on Go's
+automatic `#NN` suffixes. Failure output includes the configuration and input.
+
+The [scenario coverage matrix](../../docs/Pipeline.md#scenario-coverage) records
+the existing tests, configuration variants, benchmarks and gaps. Naming metadata
+does not add cases: all 4,475 inputs, configurations and expected pieces/ranges
+were preserved when names were introduced. The fixture hash includes the names.
+
 The fixtures are synthetic and generated in this repository; they contain no
 downloaded model or training text. Cases cover all supported built-ins, all 25
 registered regexes, all five split behaviors and invert, literal multi-character

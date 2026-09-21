@@ -6,6 +6,16 @@ cover Whitespace, Metaspace, ByteLevel and a Split/ByteLevel sequence. Every
 supported pre-tokenizer type is a performance target, including BertPreTokenizer,
 CharDelimiterSplit, Digits, Punctuation, UnicodeScripts and WhitespaceSplit.
 The current reorganization moves existing cases without expanding coverage.
+See the [scenario coverage matrix](../docs/Pipeline.md#scenario-coverage) for
+exact test counts, settings and benchmark groups.
+
+Execution names use
+`BenchmarkPipeline/<component>/<settings>/<input>/<method>`, matching the
+component/settings prefixes of oracle tests. The old `SplitByteLevel` group is
+now `Sequence/Split_ByteLevel-9c89680975f8`; Whitespace uses `Whitespace/default`,
+and Metaspace/ByteLevel names spell out their settings. CompileJSON uses the same
+Sequence group. Only names changed; configurations, inputs and measured work
+are unchanged, so historical benchmark-name filters may need updating.
 
 ```sh
 GOWORK=off go test -mod=readonly -run '^$' -bench 'Benchmark(Pipeline|CompileJSON)' -benchmem .

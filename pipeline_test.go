@@ -19,6 +19,9 @@ import (
 
 const pipelineExample = `{"type":"Sequence","pretokenizers":[{"type":"Split","pattern":{"Regex":"[0-9]"},"behavior":"Isolated","invert":false},{"type":"ByteLevel","add_prefix_space":false,"trim_offsets":false,"use_regex":false}]}`
 
+// Matches the scenario name generated for this exact configuration in the oracle.
+const pipelineExampleName = "Sequence/Split_ByteLevel-9c89680975f8"
+
 func compilePipeline(t testing.TB, config string) *pretok.Pipeline {
 	t.Helper()
 	p, err := pretok.CompileJSON([]byte(config))
@@ -29,6 +32,7 @@ func compilePipeline(t testing.TB, config string) *pretok.Pipeline {
 }
 
 type pipelineCase struct {
+	Name   string          `json:"name"`
 	Config json.RawMessage `json:"config"`
 	Input  string          `json:"input"`
 	Pieces []struct {
@@ -83,8 +87,22 @@ func TestPipelineHFOracle(t *testing.T) {
 	if len(cases) != meta.Count {
 		t.Fatal("oracle count mismatch")
 	}
+	seen := make(map[string]bool, len(cases))
 	for index, c := range cases {
-		t.Run(fmt.Sprint(index), func(t *testing.T) {
+		parts := strings.Split(c.Name, "/")
+		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" || strings.ContainsAny(c.Name, " \t\r\n#") {
+			t.Fatalf("invalid oracle case name at index %d: %q", index, c.Name)
+		}
+		if seen[c.Name] {
+			t.Fatalf("duplicate oracle case name: %q", c.Name)
+		}
+		seen[c.Name] = true
+		t.Run(c.Name, func(t *testing.T) {
+			t.Cleanup(func() {
+				if t.Failed() {
+					t.Logf("config=%s input=%q", c.Config, c.Input)
+				}
+			})
 			p := compilePipeline(t, string(c.Config))
 			i := 0
 			err := p.Walk(c.Input, func(piece pretok.Piece) error {
