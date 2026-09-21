@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Expand the HF 0.23.2 Pipeline oracle from 4,475 to 5,062 cases, preserving
+  existing fixtures and adding component boundaries, long inputs, nested
+  sequences and composed offset ranges for all nine core pre-tokenizers.
 - Breaking: make Pipeline the public pre-tokenization API. Move `Regexp`,
   `Compile`, `Cursor`, their tests, examples and microbenchmarks to
   `internal/regexp`; move regex measurement infrastructure to

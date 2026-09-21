@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import random
 import re
+import string
 import subprocess
 
 import tokenizers
@@ -82,12 +83,18 @@ def tables(script_path):
     return digest(source)
 
 
-def ranges(text):
+def ranges(text, cross_boundaries=False):
     n = len(text.encode())
     result = {(0, n)}
     result.update((i, i+1) for i in range(n))
     if n <= 16:
         result.update((i, j) for i in range(n) for j in range(i+1, n+1))
+    elif cross_boundaries:
+        # Long transformed pieces also need ranges that span several source
+        # scalars, prefixes and buffer boundaries, not only single output bytes.
+        for i in [1, 2, 3, 15, 16, 31, 32, 63, 64, 255, 256, 1023, 1024, n//2, n-1]:
+            if 0 < i < n:
+                result.update([(0, i), (i, n), (max(0, i-2), min(n, i+3))])
     return sorted(result)
 
 
@@ -106,7 +113,10 @@ def config_name(config):
             # Stage names alone do not distinguish their settings. A canonical
             # JSON digest keeps even random compositions short and unambiguous.
             canonical = json.dumps(config, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-            settings = "_".join(c["type"] for c in children) + "-" + digest(canonical.encode())[:12]
+            settings = "_".join(c["type"] for c in children[:4])
+            if len(children) > 4:
+                settings += f"_plus{len(children)-4}_stages"
+            settings += "-" + digest(canonical.encode())[:12]
     elif kind == "Digits":
         settings = "individual=" + boolean(config.get("individual_digits", False))
     elif kind == "CharDelimiterSplit":
@@ -136,7 +146,7 @@ def config_name(config):
     return kind + "/" + settings
 
 
-def capture(config, text, case_name):
+def capture(config, text, case_name, cross_boundaries=False):
     pre = None if config is None else pt.Whitespace()
     if pre is not None:
         pre.__setstate__(json.dumps(config).encode())
@@ -150,10 +160,10 @@ def capture(config, text, case_name):
     result = []
     for value, offset, _ in pieces:
         if value:
-            result.append({"text": value, "span": offset, "ranges": ranges(value)})
+            result.append({"text": value, "span": offset, "ranges": ranges(value, cross_boundaries)})
     # The Python binding's Encoding exposes original character offsets. Convert
     # these independently to original UTF-8 bytes, including partial-byte ranges.
-    subject.tokenize(lambda s: [Token(i, "", r) for i, r in enumerate(ranges(s))] if s else [])
+    subject.tokenize(lambda s: [Token(i, "", r) for i, r in enumerate(ranges(s, cross_boundaries))] if s else [])
     offsets = iter(subject.to_encoding().offsets)
     for piece in result:
         mapped = []
@@ -163,6 +173,175 @@ def capture(config, text, case_name):
         piece["ranges"] = mapped
     return {"config": config, "input": text, "pieces": result,
             "name": config_name(config) + "/" + case_name}
+
+
+def scenario_cases():
+    """Explicit HF inputs for component edges; no hand-written expectations."""
+    def sequence(*stages):
+        return {"type": "Sequence", "pretokenizers": list(stages)}
+
+    def metaspace(scheme="first", split=True, replacement="▁"):
+        return {"type": "Metaspace", "prepend_scheme": scheme,
+                "split": split, "replacement": replacement}
+
+    def literal(value, behavior="Isolated"):
+        return {"type": "Split", "pattern": {"String": value},
+                "behavior": behavior, "invert": False}
+
+    def bytelevel(prefix=False):
+        return {"type": "ByteLevel", "add_prefix_space": prefix,
+                "trim_offsets": False, "use_regex": False}
+
+    # ASCII punctuation includes characters whose Unicode category is Symbol.
+    punctuation_inputs = [
+        ("ascii_punctuation_inventory", "a" + string.punctuation + "b"),
+        ("unicode_punctuation_inventory", "«a»—…、。！？「é」؛؟्"),
+        ("punctuation_vs_symbols", "$+<=>^`|~ ©™€∑😀 a—b"),
+        ("adjacent_leading_trailing", "!!a??é！！中..."),
+        ("only_punctuation", "!?—…！！、"),
+        ("punctuation_around_whitespace", "! \t?\r\n—\u00a0。"),
+        ("combining_and_joiners", "e\u0301!\u0301a\u200d?中"),
+        ("controls_are_not_normalized", "\x00a!\x1cb?\x7f"),
+        ("long_punctuation_run", "a" + "!?—。" * 513 + "é"),
+        ("long_word_then_punctuation", "é" * 2049 + "!?中"),
+    ]
+    punctuation_inputs += [(f"punctuation_boundary_{n}", "a" * n + "é!中?😀")
+                           for n in [31, 32, 33, 1023, 1024, 1025]]
+    punctuation_configs = [{"type": "BertPreTokenizer"}]
+    punctuation_configs += [{"type": "Punctuation", "behavior": behavior} for behavior in
+                            ["Removed", "Isolated", "Contiguous", "MergedWithPrevious", "MergedWithNext"]]
+    for config in punctuation_configs:
+        for name, text in punctuation_inputs:
+            yield config, name, text
+
+    # Delimiters cover all UTF-8 widths, whitespace and an embedded NUL.
+    for delimiter in ["x", "é", "中", "😀", " ", "\x00"]:
+        config = {"type": "CharDelimiterSplit", "delimiter": delimiter}
+        for name, text in [
+            ("delimiter_only", delimiter),
+            ("delimiter_only_repeated", delimiter * 257),
+            ("delimiter_absent", "abΩ\t\r\n"),
+            ("delimiter_at_edges", delimiter + "abΩ" + delimiter),
+            ("delimiter_adjacent", "a" + delimiter * 3 + "Ω"),
+            ("delimiter_multibyte_neighbors", "𐐀" + delimiter + "e\u0301" + delimiter + "🦊"),
+            ("delimiter_long_piece", "𐐀" * 1025 + delimiter + "Ω" * 1025),
+            ("delimiter_long_mixed", ("a" + delimiter + "Ω" + delimiter * 2) * 513),
+            ("delimiter_empty", ""),
+        ]:
+            yield config, name, text
+
+    numeric = "0９٣𝟠²½Ⅳↁ"
+    for individual in [False, True]:
+        config = {"type": "Digits", "individual_digits": individual}
+        inputs = [
+            ("number_categories_adjacent", "a" + numeric + "z"),
+            ("number_categories_separated", "a0b９c٣d𝟠e²f½gⅣhↁz"),
+            ("numeric_non_numeric_neighbors", "A/0:²³´¼½¾¿⅓ⅣⅤ一二三万億"),
+            ("numeric_marks_and_joiners", "0\u0301９\u200d²\ufe0fⅣ"),
+            ("numeric_signs_separators", "-12.٣٤,+½/Ⅳ\r\n𝟠"),
+            ("number_only", numeric),
+            ("number_absent", "letters中😀"),
+            ("long_numbers", numeric * 513),
+            ("long_numbers_with_gaps", ("a" + numeric + "é ") * 257),
+        ]
+        inputs += [(f"numeric_boundary_{n}", "９" * n + "a²Ⅳ٣")
+                   for n in [31, 32, 33, 1023, 1024, 1025]]
+        for name, text in inputs:
+            yield config, name, text
+
+    # Every prepend/split combination, with 1/2/3/4-byte replacements and
+    # replacement=' ' (the replacement is itself the matched source character).
+    for scheme in ["always", "first", "never"]:
+        for split in [False, True]:
+            for replacement in ["▁", "_", "é", "😀", " "]:
+                config = metaspace(scheme, split, replacement)
+                for name, text in [
+                    ("replacement_already_at_start", replacement + "a b"),
+                    ("replacement_inside_input", "a" + replacement + "b " + replacement + "c"),
+                    ("replacement_repeated", replacement * 3 + "a" + replacement * 2),
+                    ("replacement_and_spaces", "  " + replacement + "a  b " + replacement),
+                    ("only_ascii_spaces", " " * 257),
+                    ("only_non_ascii_whitespace", "\t\r\n\u00a0\u2003\u2028"),
+                    ("empty_transform", ""),
+                    ("long_replacement_output", ("é " + replacement + "中 😀 ") * 257),
+                    ("long_prefix_piece", "𐐀" * 1025 + " a"),
+                ]:
+                    yield config, name, text
+                # First must consult original source offsets after splitting,
+                # including after the original first character is discarded.
+                yield sequence({"type": "WhitespaceSplit"}, config), "prefix_after_dropped_spaces", "  é a 中"
+                yield sequence(literal("é"), config), "prefix_after_multibyte_split", "éabé中"
+
+    script_inputs = [
+        ("script_transitions", "abcПриветΕλληνικάالعربيةदेवनागरीไทย漢字"),
+        ("han_hiragana_katakana", "漢あアー字ひカ"),
+        ("prolonged_mark_at_edges", "ーaーあーアー漢ー"),
+        ("halfwidth_kana", "漢ｶﾀｶﾅーア"),
+        ("inherited_combining_marks", "a\u0301Б\u0301α\u0301中\u0301"),
+        ("combining_marks_at_start", "\u0301\u0308aБ\u3099あ"),
+        ("common_characters_between_scripts", "a!Б1α😀中_a"),
+        ("ascii_space_any_script", " a Б 中 あ ア "),
+        ("non_ascii_spaces", "a\u00a0Б\u2003中\u2028あ\tア\n"),
+        ("joiners_variation_selectors", "a\u200dБ\ufe0f中\u200cあ"),
+        ("supplementary_scripts", "𐐀𐐨a𠀀漢𞤀Б"),
+        ("only_marks_and_symbols", "\u0301\u0308!?😀ー"),
+        ("long_single_script", "漢あアー" * 1025),
+        ("long_script_transitions", "aБα漢あアー " * 513),
+        ("long_inherited_marks", "a" + "\u0301" * 2049 + "Б"),
+    ]
+    for name, text in script_inputs:
+        yield {"type": "UnicodeScripts"}, name, text
+
+    whitespace_inputs = [
+        ("word_vs_punctuation_runs", "foo_bar!!é\u0301...中😀x"),
+        ("connector_marks_joiners", "_a_ a\u203fb a\u200cb a\u200db e\u0301"),
+        ("numeric_word_categories", "a²Ⅳ٣𝟠½b"),
+        ("unicode_whitespace_inventory", "a\t\n\v\f\r\u0085\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000b"),
+        ("non_whitespace_controls", "a\x00\x1c\x1d\x1e\x1f\u180e\u200b\u2060\ufeffb"),
+        ("cr_lf_crlf_edges", "\r\na\rb\nc\r\n\r\n"),
+        ("long_whitespace_only", " \t\r\n\u00a0\u2003" * 513),
+        ("long_word", "a_é\u0301中" * 513),
+        ("long_alternating_runs", "é!_a\u0301  中😀\r\n" * 257),
+        ("leading_trailing_unicode_spaces", "\u3000\u00a0a!!é\u202f\u2003"),
+    ]
+    whitespace_inputs += [(f"whitespace_boundary_{n}", "a" * n + "\u2003é!中\r\n")
+                          for n in [31, 32, 33, 1023, 1024, 1025]]
+    for kind in ["Whitespace", "WhitespaceSplit"]:
+        for name, text in whitespace_inputs:
+            yield {"type": kind}, name, text
+
+    # Stage ordering, nesting and source ranges through expansion and removal.
+    compositions = [
+        ("nested_empty_identity", sequence(sequence(), sequence(sequence()))),
+        ("nested_split_transform", sequence(sequence({"type": "WhitespaceSplit"}, metaspace()),
+                                           sequence(bytelevel(), {"type": "Digits", "individual_digits": True}))),
+        ("nested_bert_punctuation", sequence(sequence({"type": "BertPreTokenizer"}),
+                                            sequence({"type": "Punctuation", "behavior": "Removed"}, metaspace()))),
+        ("metaspace_before_whitespace", sequence(metaspace("always", False), {"type": "WhitespaceSplit"})),
+        ("whitespace_before_metaspace", sequence({"type": "WhitespaceSplit"}, metaspace("always", False))),
+        ("metaspace_before_bytelevel", sequence(metaspace("always", False), bytelevel(True))),
+        ("bytelevel_before_metaspace", sequence(bytelevel(True), metaspace("always", False))),
+        ("expansion_partial_scalar_removal", sequence(bytelevel(True), literal("Ã", "Removed"), metaspace("always", False))),
+        ("repeated_expansion", sequence(bytelevel(True), sequence(bytelevel(), metaspace("first", False)))),
+        ("prefix_split_prefix", sequence(metaspace("always", False, "😀"), literal("😀"), metaspace())),
+    ]
+    for name, config in compositions:
+        yield config, name + "_short", "  é! a12中😀\r\n e\u0301"
+        yield config, name + "_long", " é! a12中😀\r\n e\u0301 " * 257
+    for name, config, text in [
+        ("all_removed_by_whitespace", sequence({"type": "WhitespaceSplit"}, bytelevel(True)), " \t\r\n\u00a0"),
+        ("all_removed_by_punctuation", sequence({"type": "Punctuation", "behavior": "Removed"}, metaspace("always")), "!?—。"),
+        ("all_removed_after_expansion", sequence(bytelevel(), literal("Ã", "Removed"), literal("©", "Removed"), metaspace("always")), "é"),
+        ("drop_first_scalar_before_prefix", sequence(literal("é", "Removed"), metaspace()), "éa éb"),
+        ("split_expanded_first_scalar", sequence(bytelevel(), literal("Ã"), metaspace()), "éé"),
+    ]:
+        yield config, name, text
+    for depth in [1, 2, 8, 32]:
+        config = metaspace()
+        for _ in range(depth):
+            config = sequence(config)
+        yield config, f"nesting_depth_{depth}", "é a 中"
+    yield sequence(*[{"type": "WhitespaceSplit"}] * 256), "stage_count_256", " é a\t中 "
 
 
 def fixtures():
@@ -224,6 +403,9 @@ def fixtures():
     # Buffer growth and long-piece tails, without quadratic all-range fixtures.
     for config in [byte, meta, {"type":"ByteLevel","add_prefix_space":True,"use_regex":True,"trim_offsets":False}]:
         cases.append(capture(config, ("é 😀word123\n" * 257), "long_transform_buffer_growth"))
+    # Append new regressions without perturbing the original seeded corpus.
+    for config, name, text in scenario_cases():
+        cases.append(capture(config, text, "edge_" + name, cross_boundaries=True))
     assert len({case["name"] for case in cases}) == len(cases), "duplicate case name"
     data = (json.dumps(cases, ensure_ascii=False, separators=(",", ":")) + "\n").encode()
     (HERE / "cases.json.gz").write_bytes(gzip.compress(data, mtime=0))

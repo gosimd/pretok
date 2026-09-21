@@ -3,8 +3,8 @@
   "oracle": "tokenizers",
   "version": "0.23.2",
   "native_sha256": "447866c1f44704aad07c12f1ea068a63c45b29ecfce301a9d122b549cafc1623",
-  "case_count": 4475,
-  "cases_sha256": "ab448d77f5d872589d71d88783cc27055b411e798f5462f4de5ed531a5da43cb",
+  "case_count": 5062,
+  "cases_sha256": "931b8a67e0cd8174a18e13e17267392954d412d52d01f7d0b18ab709fc0e14a1",
   "source": "https://github.com/huggingface/tokenizers/blob/v0.23.2/tokenizers/src/pre_tokenizers/unicode_scripts/scripts.rs",
   "tables_sha256": "d52c247ed8f27f20949b2ecacc41dc558910f29abe1e4547be57685ff1aedb43"
 }

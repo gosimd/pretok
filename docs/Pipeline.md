@@ -167,7 +167,7 @@ regex profile. Compatibility is scoped to the documented settings and evidence.
 
 ### Scenario coverage
 
-The existing [oracle test](../pipeline_test.go) runs all **4,475 cases** through
+The existing [oracle test](../pipeline_test.go) runs all **5,062 cases** through
 Walk, WalkText and WalkTextUnsafe. It compares transformed text, source ranges,
 internal byte-range mappings and retained WalkText strings against the recorded
 HF 0.23.2 expectations. Names follow
@@ -181,15 +181,15 @@ relative to [`BenchmarkPipeline/`](../pipeline_bench_test.go).
 
 | Scenario / test group | HF cases / distinct configurations | Settings covered by oracle fixtures | Existing execution benchmarks |
 | --- | --- | --- | --- |
-| `BertPreTokenizer/` | 31 / 1 | Default behavior | None |
-| `CharDelimiterSplit/` | 93 / 3 | Delimiters `x`, `é`, U+0020 | None |
-| `Digits/` | 62 / 2 | `individual=false` and `true` | None |
-| `Metaspace/` | 559 / 18 | Three prepend schemes × two split modes × replacements `▁`, `_`, `é` | `Metaspace/prepend=always,split=true,replacement=U+2581/` only |
-| `Punctuation/` | 155 / 5 | All five split behaviors | None |
-| `Sequence/` | 1,310 / 843 | Empty sequence, nine fixed compositions, 1,000 random compositions; no nested Sequence oracle cases | `Sequence/Split_ByteLevel-9c89680975f8/` only |
-| `UnicodeScripts/` | 31 / 1 | Default behavior | None |
-| `Whitespace/` | 31 / 1 | Default behavior | `Whitespace/default/` |
-| `WhitespaceSplit/` | 31 / 1 | Default behavior | None |
+| `BertPreTokenizer/` | 47 / 1 | ASCII/Unicode punctuation, symbols, controls, long runs and boundary positions | None |
+| `CharDelimiterSplit/` | 147 / 6 | Delimiters `x`, `é`, `中`, `😀`, U+0020 and U+0000; edges, repetition, absence and long pieces | None |
+| `Digits/` | 92 / 2 | `individual=false` and `true`; Nd/Nl/No, marks, long runs and boundary positions | None |
+| `Metaspace/` | 829 / 30 | Three prepend schemes × two split modes × replacements `▁`, `_`, `é`, `😀`, U+0020; existing replacements and long output | `Metaspace/prepend=always,split=true,replacement=U+2581/` only |
+| `Punctuation/` | 235 / 5 | All five behaviors on adjacent, edge, ASCII/Unicode and long punctuation runs | None |
+| `Sequence/` | 1,400 / 919 | Empty, fixed/random and nested sequences; ordering, removal, composed offsets, depth 32 and 256 stages | `Sequence/Split_ByteLevel-9c89680975f8/` only |
+| `UnicodeScripts/` | 46 / 1 | Mixed scripts, inherited marks, Han/kana adaptations, supplementary characters and long runs | None |
+| `Whitespace/` | 47 / 1 | Word/punctuation distinctions, marks, connectors, Unicode spaces, CRLF and long runs | `Whitespace/default/` |
+| `WhitespaceSplit/` | 47 / 1 | Same inputs as Whitespace, with its own HF split expectations | None |
 | `Split/` | 2,015 / 63 | All 25 registered patterns in isolated mode; five behaviors × invert for two regexes and two literals | Only inside the sequence above |
 | `ByteLevel/` | 126 / 6 | Four prefix/regex combinations with trim=true; two long cases with trim=false | `ByteLevel/prefix=true,trim=true,regex=true/` only |
 | `Identity/` | 31 / 1 | JSON null | None |
@@ -222,9 +222,15 @@ The [fixture guide](../testdata/pipeline/README.md) defines the naming scheme an
 regeneration process. Full configuration and input remain available in failure
 output, including for sequences identified by a short settings hash.
 
-Existing gaps remain visible: most standalone component inputs are at most 28
-UTF-8 bytes, with long fixtures only for Metaspace and ByteLevel. Execution
-fuzzing covers three configurations; concurrency, cancellation and text ownership
+The original 4,475 fixtures are unchanged. The 587 appended `edge_` cases cover
+all nine core scenarios, including long inputs up to 12,300 UTF-8 bytes and 11
+nested Sequence cases. New long-piece range probes include multi-byte windows
+around byte positions 16/32/64/256/1024, prefixes, suffixes and the midpoint, in
+addition to all individual output bytes and the whole piece. Metaspace prefix
+schemes are also tested after splitting or discarding original leading spaces.
+
+Remaining gaps: execution fuzzing covers three configurations; concurrency,
+cancellation and text ownership
 checks are concentrated on the Split/ByteLevel example. Six of the nine core
 built-ins have no dedicated execution benchmark. The broader
 [regex benchmark suite](../benchmark/README.md#regex-cross-engine-suite) does not
