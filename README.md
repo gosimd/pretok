@@ -142,7 +142,7 @@ source revisions and do not establish current Pipeline performance.
 
 | Path | Purpose |
 | --- | --- |
-| [pipeline.go](pipeline.go) | Public Pipeline API, pieces, source spans and errors |
+| [pretok.go](pretok.go) | Public Pipeline API, pieces, source spans and errors |
 | [pipeline_test.go](pipeline_test.go), [pipeline_bench_test.go](pipeline_bench_test.go) | Public API compatibility tests and benchmarks |
 | [internal/pipeline](internal/pipeline) | Stage execution, private buffers, alignment and HF built-in classes |
 | [internal/regexp](internal/regexp) | Internal regex API with its tests, examples and microbenchmarks |

@@ -36,7 +36,7 @@ keep their existing matching functions and leave the state unchanged.
 Passing state by value avoids making a cursor escape through a function pointer
 that accepts its address. It also preserves independent progress when a cursor
 is copied. The shared compiled plan owns no mutable state. One integer is added
-to each cursor; it contains no input or buffer references. Public signatures are
+to each cursor; it contains no input or buffer references. Internal regex signatures are
 unchanged, and Cursor/reused Split must continue to allocate no memory.
 
 ## P10 semantics
@@ -64,7 +64,7 @@ Subsequent cursor searches fail immediately because `\A` no longer holds.
 
 The scan is linear in the leading decimal run, with constant local storage.
 Only the first one or two scalars are decoded again to locate the prefix endpoint.
-Public entry points still validate all UTF-8 input before scanning, even on an
+Internal regex entry points still validate all UTF-8 input before scanning, even on an
 immediate anchor/class failure.
 
 ## P14 semantics
@@ -91,7 +91,7 @@ while Split preserves the entire remaining suffix as one gap.
 This differs from P02/P07, which search past unmatched gaps, and from P10, which
 checks exact EOF and returns only a leading remainder. P14 does not require that
 the whole subject consists of digits. No new Unicode tables, mutable plan state,
-public methods or cursor fields are introduced.
+internal regex methods or cursor fields are introduced.
 
 [P14 provenance](../testdata/patterns/P14/manifest.json) pins its source and the
 hash of the shared P10 Unicode profile. Offline tests include captured HF byte

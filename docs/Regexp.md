@@ -3,7 +3,8 @@
 `internal/regexp.Regexp` represents one pre-tokenization regular expression
 compiled into an immutable, specialized scanner. It is an internal boundary
 primitive; the library's public pre-tokenization API is [Pipeline](Pipeline.md).
-The existing regex tests, examples and microbenchmarks live in `internal/regexp`.
+The existing regex tests, examples and microbenchmarks live in
+[internal/regexp](../internal/regexp).
 
 **Status:** the [internal API](../internal/regexp/regexp.go) supports the 25 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
@@ -145,7 +146,7 @@ On eligible SIMD builds, for P01 inputs of at least 256 bytes, `Cursor` creation
 using `gosimd/unicode/utf8.ValidString`. `Split` then uses
 [`QwenMarksCursor`](../internal/scan/rune_words.go) and `DecodeValidInto` to fill a
 local 1,024-rune buffer without validating the same bytes again. The buffer stays
-within the `Split` call; it is not stored in the compiled plan or public cursor.
+within the `Split` call; it is not stored in the compiled plan or cursor.
 No pool or caller-managed scratch is required. Destination allocation still
 depends on caller capacity.
 
@@ -156,7 +157,7 @@ tables, contraction predicates and whitespace endpoint decision are shared with
 the byte scanner. Full-input validation precedes every destination write, so a
 malformed suffix leaves even unused destination backing storage unchanged.
 
-Public `Cursor.Next` retains byte scanning and independent value-copy progress.
+Internal `Cursor.Next` retains byte scanning and independent value-copy progress.
 Short P01 inputs and other patterns retain their byte scanners. The Unicode
 dependency selects SIMD kernels only in supported `GOEXPERIMENT=simd` builds;
 other configurations retain byte scanning. The buffer is selected only when
@@ -393,7 +394,7 @@ special-token handling, ByteLevel mapping, BPE merges, and token IDs remain outs
 ## Exact literal sets: P08, P11, P17, P18, P21, P23
 
 All six are partial matchers: `Cursor` skips gaps, while `Split` preserves maximal
-unmatched gaps as separate spans. They use the same public contracts and UTF-8
+unmatched gaps as separate spans. They use the same internal contracts and UTF-8
 validation. These literal sets do not track changes in Unicode letter categories.
 Only `\s` membership uses the pinned reference whitespace table.
 
@@ -445,7 +446,7 @@ The shared `groupedRun` uses existing `exactSet` membership and the same run
 consumption loop as plain sets. Plans are immutable; group selection lives only
 in the current search call. Both patterns can leave gaps: Cursor skips them and
 Split preserves maximal gaps. UTF-8 validation, byte offsets, destination reuse,
-and the public API are unchanged. Only the two exact decoded strings compile.
+and the internal regex API are unchanged. Only the two exact decoded strings compile.
 
 ## P22: punctuation-prefixed words and positive symbol classes
 
@@ -470,7 +471,7 @@ or whitespace. Its 349 ranges are generated from HF Tokenizers 0.22.2 by
 differs from this pinned oracle on 104 scalars, so current standard-library
 categories cannot replace this table without changing the contract.
 
-Cursor skips unmatched gaps and Split preserves maximal gaps. Public API,
+Cursor skips unmatched gaps and Split preserves maximal gaps. Internal regex API,
 UTF-8 validation, byte offsets and destination ownership are unchanged.
 
 ## P10: anchored decimal remainder

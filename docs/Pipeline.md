@@ -1,8 +1,9 @@
 # Compiled pre-tokenizer pipelines
 
-This is the **unreleased public API** on the `pretok-api` branch. It implements
+This is the **unreleased public API**, defined in [pretok.go](../pretok.go),
+on the `pretok-api` branch. It implements
 pre-tokenization, not a complete tokenizer. The former root `Regexp`, `Compile`
-and `Cursor` API has moved to `internal/regexp`; regex functionality is exposed
+and `Cursor` API has moved to [internal/regexp](../internal/regexp); regex functionality is exposed
 through Pipeline's Split stage. The 25-string regex registry is unchanged.
 
 ```go
