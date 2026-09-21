@@ -10,7 +10,7 @@ implementation details. `Split` stages accept the 25 exact strings in the
 [supported-pattern registry](docs/SupportedPatterns.md), with specialized
 scanners and no general regex fallback.
 
-**v0.2.0:** this README describes the next release, which replaces
+**v0.2.0:** this release replaces
 the public regex API with `Pipeline`. `Regexp`, `Compile`, and `Cursor` are no
 longer exported from the root package. See the [migration guide](#migrating-from-v010)
 and [release notes](CHANGELOG.md).

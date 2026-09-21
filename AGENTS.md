@@ -146,6 +146,12 @@ include regressions rather than combining unrelated best-case measurements.
 
 ## Verification and reporting
 
+Write release documentation for the target version without temporary publication
+status labels such as "unpublished", "unreleased", "unreleased tag", or "next
+release". The user creates the tag and publishes the changes after committing
+the documentation. Do not add publication-status caveats merely because the tag
+is not present when preparing README, changelog, or other release documentation.
+
 Inspect the current checkout and preserve unrelated user changes. Once Go code
 exists, format changed Go files and run relevant tests; use `go test ./...` for
 the full suite and `go test -race ./...` when concurrency changes warrant it.
