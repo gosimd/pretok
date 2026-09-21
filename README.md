@@ -10,8 +10,10 @@ implementation details. `Split` stages accept the 25 exact strings in the
 [supported-pattern registry](docs/SupportedPatterns.md), with specialized
 scanners and no general regex fallback.
 
-**Status:** this is an unreleased breaking API change on `pretok-api`.
-`Regexp`, `Compile`, and `Cursor` are no longer exported from the root package.
+**v0.2.0:** this README describes the next release, which replaces
+the public regex API with `Pipeline`. `Regexp`, `Compile`, and `Cursor` are no
+longer exported from the root package. See the [migration guide](#migrating-from-v010)
+and [release notes](CHANGELOG.md).
 The published v0.1.0 tag retains its [historical regex API](docs/Regexp.md#v010-release-contract);
 it does not provide the Pipeline API described here.
 
@@ -91,11 +93,90 @@ func (p Piece) OriginalRange(start, end int) (Span, error)
 - Regex strings in a `Split` configuration are matched exactly after JSON
   decoding, without trimming, additional unescaping, normalization or fallback.
 
-To migrate isolated regex splitting, compile
-`{"type":"Split","pattern":{"Regex":"..."},"behavior":"Isolated","invert":false}`
-and consume final pieces through `Walk` or either text-only method. Build the JSON
-with `encoding/json` when the pattern comes from a Go string. `Walk` maps source
-offsets through any subsequent transformations.
+## Migrating from v0.1.0
+
+The module path remains `github.com/gosimd/pretok`, but v0.2.0 is a **breaking
+API change**. Replace calls to `pretok.Compile`, `Regexp.Split`, and
+`Regexp.Cursor` with `CompileJSON` and Pipeline walking. There is no public regex
+compatibility wrapper; Go's `internal` boundary prevents consumers from importing
+`internal/regexp`.
+
+| v0.1.0 operation | v0.2.0 replacement |
+| --- | --- |
+| `pretok.Compile(pattern)` | `CompileJSON` with a `Split` stage whose `pattern` is `{"Regex": pattern}` |
+| `re.Split(input, dst)` — matches and unmatched gaps | `Split` with `behavior: "Isolated", invert: false`; append `OriginalRange` results in `Walk` |
+| `re.Cursor(input)` / `cursor.Next()` — matches only | `Split` with `behavior: "Removed", invert: true`; consume callbacks instead of pulling a cursor |
+| Source byte spans | `Piece.OriginalRange(0, len(piece.Text()))`, resolved inside the callback |
+| Retained output strings | `WalkText`; emitted strings remain valid after the callback |
+| Synchronous text consumption | `WalkTextUnsafe`; clone inside the callback if retaining text |
+
+For example, the former ``pretok.Compile(`\p{N}{1,3}`)`` followed by
+`re.Split(input, dst)` becomes:
+
+```go
+package main
+
+import (
+    "encoding/json"
+    "fmt"
+
+    "github.com/gosimd/pretok"
+)
+
+func main() {
+    // Marshal the original Go string: do not manually escape or normalize it.
+    config, err := json.Marshal(map[string]any{
+        "type": "Split",
+        "pattern": map[string]string{"Regex": `\p{N}{1,3}`},
+        "behavior": "Isolated",
+        "invert": false,
+    })
+    if err != nil {
+        panic(err)
+    }
+    p, err := pretok.CompileJSON(config) // Compile once, reuse for each input.
+    if err != nil {
+        panic(err)
+    }
+    input := "x1234y"
+    spans := make([]pretok.Span, 0, 8)
+    err = p.Walk(input, func(piece pretok.Piece) error {
+        span, err := piece.OriginalRange(0, len(piece.Text()))
+        if err != nil {
+            return err
+        }
+        spans = append(spans, span)
+        return nil
+    })
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(spans)
+}
+// Output:
+// [{0 1} {1 4} {4 5} {5 6}]
+```
+
+The caller owns the output slice: keep its length to append, or use `spans[:0]`
+before the next input to reuse capacity. Pipeline itself does not materialize an
+output list. It validates the complete input before any callback, so invalid
+UTF-8 cannot append partial results. A callback error stops walking and is returned
+unchanged; earlier callback side effects are not rolled back.
+
+A standalone `Split` preserves source bytes. With transformations such as
+Metaspace or ByteLevel, `Piece.Text()` contains transformed text and
+`OriginalRange` maps its byte ranges back to the supplied input. Source ranges
+can overlap or have gaps. Resolve ranges and copy borrowed text before the
+callback returns; storing a `Piece` does not extend its lifetime. Both text-only
+methods skip output alignment construction. Avoiding defensive copies with
+`WalkTextUnsafe` does not guarantee allocation-free execution.
+
+The 25 accepted regex strings and `ErrUnsupportedPattern` contract are unchanged.
+`Span`, `ErrInvalidUTF8`, and `ErrUninitialized` remain public;
+`ErrUninitialized` now describes a nil or zero-value Pipeline. Use `errors.Is`
+to check sentinels, including errors wrapped by `CompileJSON`, rather than matching
+error messages. Configuration and callback errors are documented in the
+[Pipeline contract](docs/Pipeline.md).
 
 ## Integration boundary
 
@@ -128,9 +209,11 @@ GOWORK=off go test -mod=readonly -run '^$' -bench . -benchmem ./internal/regexp
 ```
 
 Existing Pipeline benchmarks cover Whitespace, Metaspace, ByteLevel and a
-Split/ByteLevel sequence. The other supported components are also benchmark
-targets; this API reorganization does not add new cases or claim complete
-benchmark coverage. The existing pipeline oracle tests cover all supported types.
+Split/ByteLevel sequence; benchmark coverage does not yet include every supported
+component. All supported types have pinned HF oracle cases. The
+[scenario coverage matrix](docs/Pipeline.md#scenario-coverage) maps component
+settings to tests and benchmarks; [fuzzing and shared contracts](docs/Pipeline.md#fuzzing-and-shared-contracts)
+describe the additional checks.
 
 [Reproducibility](docs/Reproducibility.md) describes pinned Unicode tables,
 fixture generators and live HF checks. The [regex benchmark instructions](benchmark/README.md),

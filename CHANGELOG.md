@@ -1,38 +1,73 @@
 # Changelog
 
-## Unreleased
+## v0.2.0
 
-- Fuzz valid Pipeline components, settings and bounded nested compositions with
-  text/offset invariants and aligned/text-only parity. Keep shared API contracts
-  in compact facade and executor tests, including borrowed alignment during
-  reentrant execution, without multiplying them by pre-tokenizer type.
-- Expand the HF 0.23.2 Pipeline oracle from 4,475 to 5,062 cases, preserving
-  existing fixtures and adding component boundaries, long inputs, nested
-  sequences and composed offset ranges for all nine core pre-tokenizers.
-- Breaking: make Pipeline the public pre-tokenization API. Move `Regexp`,
-  `Compile`, `Cursor`, their tests, examples and microbenchmarks to
-  `internal/regexp`; move regex measurement infrastructure to
-  `internal/regexp/bench`. Existing public Pipeline tests and benchmarks remain
-  in the root package. No new test or benchmark cases are added by this move.
-  Use a Pipeline Split stage for registered regex patterns. Public `Span` and
-  error sentinels remain part of the Pipeline API; `ErrUninitialized` now reports
-  an uninitialized pipeline. The v0.1.0 tag retains its historical API.
-- Add `CompileJSON`, immutable `Pipeline`, `Walk`, `WalkText`, `WalkTextUnsafe`,
-  and callback-scoped `Piece.Text` / `Piece.OriginalRange`. Pipelines support the nine documented
-  built-ins plus exact-registry/literal `Split` and `ByteLevel`; see
-  [the pipeline contract](docs/Pipeline.md). Text-only walking skips output
-  alignment construction while preserving stage context. `WalkText` copies strings
-  for safe retention; `WalkTextUnsafe` avoids defensive copies but requires
-  `strings.Clone` inside the callback before retaining or asynchronously using text.
-- Add HF Tokenizers 0.23.2 pipeline fixtures, built-in Unicode tables, offset
-  regressions, concurrent/reentrant execution tests and allocation benchmarks.
-  These are separate from the existing regex profile pinned to HF 0.22.2.
-- P01 `Split` validates the complete input, then scans 1,024-rune windows decoded
-  by `github.com/gosimd/unicode v0.1.2`. Supported `GOEXPERIMENT=simd` builds use
-  SIMD UTF-8 kernels; other configurations retain byte scanning.
-- Rune scratch is local to each call. Short inputs keep byte scanning;
-  internal cursor-copy semantics, byte boundaries and error atomicity remain
-  unchanged by the buffering optimization.
+Requires Go 1.27.0 or newer and `github.com/gosimd/unicode v0.1.2`.
+
+### Breaking API change and migration
+
+- Replace the root `Regexp`, `Compile`, `Cursor`, and `Regexp.Split` API with
+  `CompileJSON` and `Pipeline`. The module path remains
+  `github.com/gosimd/pretok`; the historical API remains available at v0.1.0.
+  Regex implementation, tests, examples and microbenchmarks now live in
+  `internal/regexp`, which is not importable by external consumers. Regex
+  measurement infrastructure lives in `internal/regexp/bench`.
+- Migrate `Regexp.Split` to a Pipeline `Split` stage with `behavior: "Isolated"`
+  and `invert: false`. Migrate match-only cursor iteration with
+  `behavior: "Removed"` and `invert: true`. Consume results through callbacks;
+  use `Walk` and `Piece.OriginalRange` to collect source spans. See the
+  [migration guide and complete example](README.md#migrating-from-v010).
+- Keep public `Span`, `ErrUnsupportedPattern`, `ErrInvalidUTF8`, and
+  `ErrUninitialized`. The latter now describes a nil or zero-value Pipeline.
+  Use `errors.Is` for sentinel checks. Add `ErrInvalidConfig`,
+  `ErrUnsupportedPreTokenizer`, `ErrNilCallback`, and `ErrInvalidRange`.
+
+### Pipeline features and contracts
+
+- Compile the JSON value of `pre_tokenizer` into an immutable, reusable Pipeline.
+  Support `BertPreTokenizer`, `CharDelimiterSplit`, `Digits`, `Metaspace`,
+  `Punctuation`, nested `Sequence`, `UnicodeScripts`, `Whitespace`,
+  `WhitespaceSplit`, literal/exact-registry `Split`, and `ByteLevel`.
+  The [25-string regex registry](docs/SupportedPatterns.md) is unchanged;
+  there is no general regex fallback. See the [configuration contract](docs/Pipeline.md)
+  for supported settings, defaults and limits.
+- `Walk` emits final transformed pieces with original UTF-8 byte alignment.
+  `Piece`, its text and alignment are callback-scoped: copy text and resolve
+  offsets before returning. Original ranges can overlap or have gaps.
+- `WalkText` defensively copies emitted strings for safe retention and
+  asynchronous use. `WalkTextUnsafe` avoids those copies, but later execution
+  may overwrite the backing memory. Clone with `strings.Clone` inside the
+  callback before retaining or asynchronously using its text. Both text-only
+  methods skip output alignment construction; neither promises zero allocations.
+- Support concurrent and reentrant execution with private execution state.
+  Validate the complete input before callbacks, reject malformed UTF-8, and
+  emit nothing for empty input. Callback errors stop execution and are returned
+  unchanged; earlier callback side effects are not rolled back.
+- Scope support to pre-tokenization. Normalization, special-token handling, BPE,
+  vocabulary lookup, token IDs and Encoding postprocessing remain outside the
+  library. ByteLevel `trim_offsets` does not perform Encoding postprocessing.
+
+### Compatibility evidence and performance scope
+
+- Add 5,062 pinned HF Tokenizers 0.23.2 Pipeline oracle cases and built-in Unicode
+  tables. Cases cover all supported types, including long runs, component
+  boundaries, nested sequences and composed offsets. The existing regex profile
+  remains pinned to HF 0.22.2.
+- Add bounded fuzzing of valid components, settings and nested compositions,
+  checking text/offset invariants and aligned/text-only parity. Keep shared UTF-8,
+  cancellation, ownership and concurrent/reentrant contracts in focused tests.
+  Local parity checks complement independent HF fixtures.
+- Add Pipeline execution/allocation benchmarks for Whitespace, Metaspace,
+  ByteLevel and a Split/ByteLevel sequence, plus a compilation benchmark.
+  Coverage is recorded in the [scenario matrix](docs/Pipeline.md#scenario-coverage);
+  not every supported component has a benchmark yet. Historical regex benchmark
+  reports do not establish Pipeline performance.
+- Optimize the internal regex P01 `Split` path with 1,024-rune windows decoded
+  by `github.com/gosimd/unicode v0.1.2` after complete input validation.
+  Supported `GOEXPERIMENT=simd` builds use SIMD UTF-8 kernels; other configurations
+  and short inputs retain byte scanning. Scratch is local to each call; byte
+  boundaries, cursor-copy semantics and error atomicity are preserved. This
+  buffering optimization does not apply to Pipeline execution.
 
 ## v0.1.0
 
