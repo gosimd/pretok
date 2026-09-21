@@ -229,12 +229,45 @@ around byte positions 16/32/64/256/1024, prefixes, suffixes and the midpoint, in
 addition to all individual output bytes and the whole piece. Metaspace prefix
 schemes are also tested after splitting or discarding original leading spaces.
 
-Remaining gaps: execution fuzzing covers three configurations; concurrency,
-cancellation and text ownership
-checks are concentrated on the Split/ByteLevel example. Six of the nine core
-built-ins have no dedicated execution benchmark. The broader
+Six of the nine core built-ins still have no dedicated execution benchmark. The broader
 [regex benchmark suite](../benchmark/README.md#regex-cross-engine-suite) does not
 substitute for those Pipeline measurements.
+
+### Fuzzing and shared contracts
+
+[`FuzzPipelineExecution`](../pipeline_fuzz_test.go) generates valid configurations
+for every component above, including literal Split, all 25 registered regexes,
+ByteLevel, empty/flat/nested Sequence and JSON null identity. Mutations change
+stage order, settings and Unicode delimiters/replacements. Execution is bounded
+to four non-Sequence stages, four Sequence levels, a 64-byte configuration recipe
+and 4 KiB of input. Invalid byte sequences in fuzz data are replaced with U+FFFD
+by the test generator before execution, so mutations exercise stage semantics;
+this is not normalization or replacement performed by the library.
+
+Walk is the primary path: checks cover valid non-empty output, source byte
+boundaries, ordered mapping endpoints (overlap is allowed), preservation of source
+bytes by boundary-only configurations, and consistent byte/prefix/suffix ranges.
+WalkTextUnsafe must emit the same texts without building alignment. WalkText's
+copying wrapper is covered by ownership tests and HF fixtures, rather than
+duplicating the execution fuzz loop. `FuzzCompileJSON` independently mutates raw
+JSON to exercise the compiler's acceptance/error behavior.
+
+Shared API contracts are tested once at their owning layer in
+[`pipeline_test.go`](../pipeline_test.go):
+
+| Test | Scope |
+| --- | --- |
+| `TestPipelineEntryErrors` | Three public entry points on one identity configuration: initialization, nil callback, complete UTF-8 validation, error precedence and empty input |
+| `TestPipelineCancellation` | Aligned/text-only execution of one Split/ByteLevel sequence: stop after the second callback, preserve the error and allow subsequent execution |
+| `TestPipelineInvalidRanges` | Invalid ranges and zero Piece |
+| `TestPipelineConcurrencyReentrancyAndPanic` | One shared transforming pipeline, exclusive scratch, live borrowed text/alignment during nested calls, panic propagation |
+| `TestPipelineTextOwnership` | Retained WalkText strings and explicitly cloned unsafe strings, including asynchronous reads and reuse after a callback error |
+
+These tests are not multiplied by component. Local fuzz invariants and agreement
+between execution methods cannot establish HF compatibility: the independent
+5,062-case HF oracle remains a separate required check. New fuzz failures should
+be minimized and checked against HF 0.23.2 before adding semantic expectations.
+See [fuzz commands and reproduction](Reproducibility.md#pipeline-fuzzing).
 
 ### Integration limits
 

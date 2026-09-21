@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fuzz valid Pipeline components, settings and bounded nested compositions with
+  text/offset invariants and aligned/text-only parity. Keep shared API contracts
+  in compact facade and executor tests, including borrowed alignment during
+  reentrant execution, without multiplying them by pre-tokenizer type.
 - Expand the HF 0.23.2 Pipeline oracle from 4,475 to 5,062 cases, preserving
   existing fixtures and adding component boundaries, long inputs, nested
   sequences and composed offset ranges for all nine core pre-tokenizers.

@@ -25,7 +25,6 @@ GOWORK=off GOEXPERIMENT=simd go test -mod=readonly -race ./...
 The root package tests the public Pipeline API against HF 0.23.2 fixtures for
 all supported component types. Internal regex tests and microbenchmarks are in
 `internal/regexp`; the cross-engine regex harness is in `internal/regexp/bench`.
-No new cases are introduced by this reorganization.
 
 The regex tests read the existing P05 and P01 regression fixtures and pinned Unicode
 profiles, and run inline regressions and independent differential checks for the
@@ -35,6 +34,34 @@ other patterns. They do not contact Hugging Face or invoke Python/Rust. The
 P01 also compares its buffered decoder path against the byte scanner at tiny
 lookahead capacities and 1K/2K/4K/8K rune boundaries. SIMD kernel selection belongs
 to `gosimd/unicode v0.1.2`; no local checkout of that module is required.
+
+## Pipeline fuzzing
+
+First run the ordinary suite, including the independent HF 0.23.2 oracle. The
+execution fuzzer then checks valid generated component configurations and their
+compositions; the compiler fuzzer separately checks arbitrary JSON.
+
+```sh
+GOWORK=off go test -mod=readonly ./...
+GOWORK=off go test -mod=readonly -run '^$' -fuzz '^FuzzPipelineExecution$' -fuzztime=30s -parallel=4 .
+GOWORK=off go test -mod=readonly -run '^$' -fuzz '^FuzzCompileJSON$' -fuzztime=30s -parallel=4 .
+GOWORK=off go test -mod=readonly -race .
+```
+
+`FuzzPipelineExecution` replaces the old fixed-configuration
+`FuzzPipelineWalkParity`. Its corpus arguments are a configuration recipe
+(`[]byte`) and input text (`string`); the old target's string-only corpus cannot
+be copied unchanged. Configuration generation is deterministic and bounded;
+failure output includes the decoded JSON configuration and actual input.
+The [fuzzing contract](Pipeline.md#fuzzing-and-shared-contracts) lists invariants,
+input construction, limits and the separation from shared API contract tests.
+
+Go saves failures in `testdata/fuzz/<target>/<hash>` and prints the exact rerun
+command. Reproduce with `go test -run '<target>/<hash>' .`; preserve minimized
+failures as regressions. Candidate semantic expectations must come from the
+pinned HF oracle, not solely from agreement between two local execution paths.
+Ordinary Go tests and fuzzing do not invoke Python, Rust or the network. Expanding
+HF fixtures remains the explicit [oracle-generation workflow](../testdata/pipeline/README.md).
 
 ## Unicode tables and existing regression fixtures
 

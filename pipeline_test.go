@@ -12,7 +12,6 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/gosimd/pretok"
 )
@@ -223,48 +222,89 @@ func TestPipelineJSONOwnershipAndTrim(t *testing.T) {
 	}
 }
 
-func TestPipelineErrorsAndCancellation(t *testing.T) {
-	for _, p := range []*pretok.Pipeline{nil, new(pretok.Pipeline)} {
-		if err := p.Walk("", nil); err != pretok.ErrUninitialized {
-			t.Fatal(err)
-		}
-		if err := p.WalkText("", nil); err != pretok.ErrUninitialized {
-			t.Fatal(err)
-		}
-		if err := p.WalkTextUnsafe("", nil); err != pretok.ErrUninitialized {
-			t.Fatal(err)
+// Entry validation belongs to the facade, independent of component semantics.
+func TestPipelineEntryErrors(t *testing.T) {
+	identity := compilePipeline(t, `null`)
+	methods := []struct {
+		name string
+		walk func(*pretok.Pipeline, string, func(string) error) error
+	}{
+		{"Walk", func(p *pretok.Pipeline, text string, emit func(string) error) error {
+			if emit == nil {
+				return p.Walk(text, nil)
+			}
+			return p.Walk(text, func(piece pretok.Piece) error { return emit(piece.Text()) })
+		}},
+		{"WalkText", (*pretok.Pipeline).WalkText},
+		{"WalkTextUnsafe", (*pretok.Pipeline).WalkTextUnsafe},
+	}
+	for _, method := range methods {
+		for _, tc := range []struct {
+			name        string
+			p           *pretok.Pipeline
+			text        string
+			nilCallback bool
+			want        error
+		}{
+			{"nil_precedes_callback_and_utf8", nil, "\xff", true, pretok.ErrUninitialized},
+			{"zero_precedes_callback_and_utf8", new(pretok.Pipeline), "\xff", true, pretok.ErrUninitialized},
+			{"nil_with_callback", nil, "ok", false, pretok.ErrUninitialized},
+			{"zero_with_callback", new(pretok.Pipeline), "ok", false, pretok.ErrUninitialized},
+			{"nil_callback_empty", identity, "", true, pretok.ErrNilCallback},
+			{"nil_callback_precedes_utf8", identity, "\xff", true, pretok.ErrNilCallback},
+			{"invalid_suffix", identity, "valid prefix\xff", false, pretok.ErrInvalidUTF8},
+			{"long_invalid_suffix", identity, strings.Repeat("é1", 2000) + "\xed\xa0\x80", false, pretok.ErrInvalidUTF8},
+			{"overlong_utf8", identity, "\xc0\xaf", false, pretok.ErrInvalidUTF8},
+			{"surrogate", identity, "\xed\xa0\x80", false, pretok.ErrInvalidUTF8},
+			{"empty", identity, "", false, nil},
+		} {
+			t.Run(method.name+"/"+tc.name, func(t *testing.T) {
+				var emit func(string) error
+				if !tc.nilCallback {
+					emit = func(string) error { t.Fatal("unexpected callback"); return nil }
+				}
+				if err := method.walk(tc.p, tc.text, emit); err != tc.want {
+					t.Fatalf("got %v, want %v", err, tc.want)
+				}
+			})
 		}
 	}
+}
+
+// Exercise the aligned and text-only executor paths on one multi-piece pipeline.
+func TestPipelineCancellation(t *testing.T) {
 	p := compilePipeline(t, pipelineExample)
-	if p.Walk("", nil) != pretok.ErrNilCallback || p.WalkText("", nil) != pretok.ErrNilCallback || p.WalkTextUnsafe("", nil) != pretok.ErrNilCallback {
-		t.Fatal("nil callback")
-	}
-	for _, input := range []string{"ok\xff", "\xc0\xaf", strings.Repeat("é1", 2000) + "\xed\xa0\x80"} {
-		if err := p.Walk(input, func(pretok.Piece) error { t.Fatal("callback on invalid UTF-8"); return nil }); err != pretok.ErrInvalidUTF8 {
-			t.Fatal(err)
-		}
-		if err := p.WalkText(input, func(string) error { t.Fatal("callback on invalid UTF-8"); return nil }); err != pretok.ErrInvalidUTF8 {
-			t.Fatal(err)
-		}
-		if err := p.WalkTextUnsafe(input, func(string) error { t.Fatal("callback on invalid UTF-8"); return nil }); err != pretok.ErrInvalidUTF8 {
-			t.Fatal(err)
-		}
-	}
 	stop := errors.New("consumer failed")
-	for _, mode := range []string{"Walk", "WalkText", "WalkTextUnsafe"} {
-		count := 0
-		var err error
-		if mode == "WalkTextUnsafe" {
-			err = p.WalkTextUnsafe("a123é", func(string) error { count++; return stop })
-		} else if mode == "WalkText" {
-			err = p.WalkText("a123é", func(string) error { count++; return stop })
-		} else {
-			err = p.Walk("a123é", func(pretok.Piece) error { count++; return stop })
+	for _, aligned := range []bool{true, false} {
+		calls := 0
+		emit := func(string) error {
+			calls++
+			if calls == 2 {
+				return stop
+			}
+			return nil
 		}
-		if err != stop || count != 1 {
-			t.Fatalf("cancellation: %v %d", err, count)
+		var err error
+		if aligned {
+			err = p.Walk("ab12é", func(piece pretok.Piece) error { return emit(piece.Text()) })
+		} else {
+			err = p.WalkTextUnsafe("ab12é", emit)
+		}
+		if err != stop || calls != 2 {
+			t.Fatalf("aligned=%v: error=%v, callbacks=%d", aligned, err, calls)
+		}
+		var got []string
+		if err := p.WalkText("ab12é", func(s string) error { got = append(got, s); return nil }); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, []string{"ab", "1", "2", "Ã©"}) {
+			t.Fatalf("execution after cancellation: %q", got)
 		}
 	}
+}
+
+func TestPipelineInvalidRanges(t *testing.T) {
+	p := compilePipeline(t, pipelineExample)
 	err := p.Walk("é", func(piece pretok.Piece) error {
 		for _, bounds := range [][2]int{{-1, 1}, {0, 0}, {2, 1}, {0, len(piece.Text()) + 1}} {
 			if _, err := piece.OriginalRange(bounds[0], bounds[1]); err != pretok.ErrInvalidRange {
@@ -288,6 +328,13 @@ func TestPipelineConcurrencyReentrancyAndPanic(t *testing.T) {
 		var got []string
 		err := p.Walk("ab12é", func(piece pretok.Piece) error {
 			before := strings.Clone(piece.Text())
+			beforeRange, err := piece.OriginalRange(0, len(before))
+			if err != nil {
+				return err
+			}
+			if err := p.Walk("中7", func(pretok.Piece) error { return nil }); err != nil {
+				return err
+			}
 			if err := p.WalkText("中7", func(string) error { return nil }); err != nil {
 				return err
 			}
@@ -296,6 +343,10 @@ func TestPipelineConcurrencyReentrancyAndPanic(t *testing.T) {
 			}
 			if piece.Text() != before {
 				return errors.New("nested call overwrote outer piece")
+			}
+			afterRange, err := piece.OriginalRange(0, len(before))
+			if err != nil || afterRange != beforeRange {
+				return errors.New("nested call overwrote outer alignment")
 			}
 			got = append(got, before)
 			return nil
@@ -306,7 +357,16 @@ func TestPipelineConcurrencyReentrancyAndPanic(t *testing.T) {
 		if !reflect.DeepEqual(got, want) {
 			return fmt.Errorf("got %q", got)
 		}
-		return nil
+		return p.WalkTextUnsafe("ab12é", func(text string) error {
+			before := strings.Clone(text)
+			if err := p.Walk("中7", func(pretok.Piece) error { return nil }); err != nil {
+				return err
+			}
+			if text != before {
+				return errors.New("nested call overwrote active unsafe text")
+			}
+			return nil
+		})
 	}
 	var wg sync.WaitGroup
 	for range 8 {
@@ -335,58 +395,6 @@ func TestPipelineConcurrencyReentrancyAndPanic(t *testing.T) {
 	if err := check(); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func FuzzPipelineWalkParity(f *testing.F) {
-	for _, s := range []string{"", "ab12é", "é😀中", "a\xff", " a\r\n", "▁"} {
-		f.Add(s)
-	}
-	configs := []string{pipelineExample, `{"type":"ByteLevel"}`, `{"type":"Sequence","pretokenizers":[{"type":"Metaspace","prepend_scheme":"first"},{"type":"ByteLevel","use_regex":false},{"type":"Whitespace"}]}`}
-	ps := make([]*pretok.Pipeline, len(configs))
-	for i, c := range configs {
-		ps[i] = compilePipeline(f, c)
-	}
-	f.Fuzz(func(t *testing.T, s string) {
-		if len(s) > 16384 {
-			t.Skip()
-		}
-		for _, p := range ps {
-			var got []string
-			err := p.Walk(s, func(piece pretok.Piece) error {
-				if piece.Text() == "" || !utf8.ValidString(piece.Text()) {
-					t.Fatal("invalid output")
-				}
-				span, e := piece.OriginalRange(0, len(piece.Text()))
-				if e != nil || span.Start < 0 || span.End > len(s) || span.Start >= span.End || !utf8.ValidString(s[span.Start:span.End]) {
-					t.Fatal("invalid source range", span, e)
-				}
-				got = append(got, strings.Clone(piece.Text()))
-				return nil
-			})
-			if !utf8.ValidString(s) {
-				if err != pretok.ErrInvalidUTF8 || len(got) != 0 {
-					t.Fatal(err)
-				}
-				continue
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			for _, walk := range []func(string, func(string) error) error{p.WalkText, p.WalkTextUnsafe} {
-				i := 0
-				err = walk(s, func(piece string) error {
-					if i >= len(got) || piece != got[i] {
-						t.Fatal("WalkText mismatch")
-					}
-					i++
-					return nil
-				})
-				if err != nil || i != len(got) {
-					t.Fatal(err, i, len(got))
-				}
-			}
-		}
-	})
 }
 
 // A consumer may retain safe strings or explicitly clone unsafe strings. Readers
