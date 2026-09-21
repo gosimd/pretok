@@ -10,6 +10,31 @@ import (
 // segments streams selected matches and maximal gaps, before delimiter policy.
 // Regex receives the entire previous-stage piece (anchors and lookaround matter).
 func (s stage) segments(src string, emit func(int, int, bool) error) error {
+	if s.fallback != nil {
+		// Search the complete piece once: searching successive suffixes would
+		// change anchors and word boundaries. Use Go's non-overlapping match
+		// selection, including its suppression of adjacent empty matches.
+		gap := 0
+		for _, match := range s.fallback.FindAllStringIndex(src, -1) {
+			start, end := match[0], match[1]
+			if start > gap {
+				if err := emit(gap, start, s.invert); err != nil {
+					return err
+				}
+			}
+			// Empty matches mark boundaries but never produce empty pieces.
+			if end > start {
+				if err := emit(start, end, !s.invert); err != nil {
+					return err
+				}
+			}
+			gap = end
+		}
+		if gap < len(src) {
+			return emit(gap, len(src), s.invert)
+		}
+		return nil
+	}
 	if s.kind == whitespaceStage {
 		for pos := 0; pos < len(src); {
 			start := pos

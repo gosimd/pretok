@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.2.1
+
+- Add standard-library `regexp` fallback to Pipeline `Split` stages when an
+  expression is absent from the specialized registry. Compile once and reuse
+  the result. Registered expressions retain their existing scanner and HF
+  semantics; the internal regex API remains registry-only.
+- Accept arbitrary expressions supported by Go `regexp`, including unregistered
+  equivalent spellings. Fallback uses Go syntax and matching rules, with no
+  general HF/Oniguruma compatibility guarantee. Unsupported Go syntax, including
+  lookaround and backreferences, still fails unless the exact expression has a
+  registered scanner. Compilation errors wrap both `ErrUnsupportedPattern` and
+  the underlying `*regexp/syntax.Error`, and include the configuration path.
+- Apply all five Split behaviors and `invert` to matches on the complete
+  previous-stage piece. Empty matches create boundaries but never empty output
+  pieces; Go's adjacent-empty-match suppression applies. Preserve byte alignment,
+  transformed sequences and callback ownership contracts. Fallback materializes
+  match indices per input piece and makes no specialized performance claim.
+- Add fallback regression tests, differential fuzzing against Go `regexp`,
+  concurrent reuse checks and execution/allocation benchmarks for all three
+  walking methods. See [fallback semantics](docs/Pipeline.md#standard-library-regex-fallback).
+
 ## v0.2.0
 
 Requires Go 1.27.0 or newer and `github.com/gosimd/unicode v0.1.2`.

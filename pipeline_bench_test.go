@@ -15,6 +15,7 @@ func BenchmarkPipeline(b *testing.B) {
 		{"Whitespace/default", `{"type":"Whitespace"}`},
 		{"ByteLevel/prefix=true,trim=true,regex=true", `{"type":"ByteLevel"}`},
 		{"Metaspace/prepend=always,split=true,replacement=U+2581", `{"type":"Metaspace"}`},
+		{"Split/GoRegexpFallback", `{"type":"Split","pattern":{"Regex":"\\p{L}+|[0-9]+"},"behavior":"Isolated"}`},
 	}
 	inputs := []struct{ name, text string }{
 		{"short_ascii", "Hello, world! 123"},
@@ -102,14 +103,19 @@ func BenchmarkPipeline(b *testing.B) {
 }
 
 func BenchmarkCompileJSON(b *testing.B) {
-	b.Run(pipelineExampleName, func(b *testing.B) {
-		b.ReportAllocs()
-		for b.Loop() {
-			p, err := pretok.CompileJSON([]byte(pipelineExample))
-			if err != nil {
-				b.Fatal(err)
+	for _, tc := range []struct{ name, config string }{
+		{pipelineExampleName, pipelineExample},
+		{"Split/GoRegexpFallback", `{"type":"Split","pattern":{"Regex":"\\p{L}+|[0-9]+"},"behavior":"Isolated"}`},
+	} {
+		b.Run(tc.name, func(b *testing.B) {
+			b.ReportAllocs()
+			for b.Loop() {
+				p, err := pretok.CompileJSON([]byte(tc.config))
+				if err != nil {
+					b.Fatal(err)
+				}
+				_ = p
 			}
-			_ = p
-		}
-	})
+		})
+	}
 }

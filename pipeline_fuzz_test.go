@@ -113,6 +113,8 @@ func FuzzPipelineExecution(f *testing.F) {
 	for i, entry := range registry {
 		patterns[i] = entry.Pattern
 	}
+	// Unregistered expressions exercise Go fallback, including empty matches.
+	patterns = append(patterns, `[0-9]+`, `\b`, `(?m)^.+$`, `a*`, ``, `é|中`, `\d`, `a|ab`)
 	text := "  a_é\u0301中ーБ²Ⅳ٣!😀▁\x00\r\n 123 "
 	for kind := byte(0); kind < 11; kind++ {
 		// Cover both booleans and each behavior/prefix option before mutation.

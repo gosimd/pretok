@@ -179,7 +179,7 @@ func TestCompilePipelineErrors(t *testing.T) {
 			t.Errorf("%s => %v %v", config, p, err)
 		}
 	}
-	for _, expr := range []string{`[0-9]+`, `[`, ` [0-9]`, `\d`} {
+	for _, expr := range []string{`[`, `(?=a)`, `(a)\1`} {
 		config, _ := json.Marshal(map[string]any{"type": "Split", "pattern": map[string]string{"Regex": expr}})
 		if _, err := pretok.CompileJSON(config); !errors.Is(err, pretok.ErrUnsupportedPattern) {
 			t.Errorf("%s: %v", config, err)

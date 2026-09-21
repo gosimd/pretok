@@ -1,7 +1,7 @@
 // Package pretok compiles HF pre-tokenizer configurations into reusable
 // pipelines. Pipelines split and transform text, with optional mapping back to
-// original byte offsets. Regex stages use registered specialized scanners,
-// without a general regex fallback.
+// original byte offsets. Regex stages prefer registered specialized scanners
+// and otherwise use the standard library's regexp engine.
 package pretok
 
 import (
@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	// ErrUnsupportedPattern means that a Split stage's exact regex string is not
-	// registered. It also covers malformed expressions; no syntax parsing occurs.
+	// ErrUnsupportedPattern means that a Split regex is absent from the
+	// specialized registry and cannot be compiled by the standard regexp package.
+	// The error also wraps the standard library's syntax error.
 	ErrUnsupportedPattern = errors.New("pretok: unsupported pattern")
 	// ErrInvalidUTF8 means the supplied input is not valid UTF-8.
 	ErrInvalidUTF8 = errors.New("pretok: invalid UTF-8")
@@ -44,7 +45,8 @@ type Pipeline struct{ program *pipeline.Program }
 
 // CompileJSON compiles the contents of tokenizer.json's pre_tokenizer field,
 // not the enclosing tokenizer document. A null configuration is an identity
-// pipeline. Split regex strings must match the supported registry exactly.
+// pipeline. Split regex strings select an exact registered scanner when possible,
+// otherwise they are compiled with the standard library's regexp package.
 // See docs/Pipeline.md for supported components, defaults, and limits.
 func CompileJSON(config []byte) (*Pipeline, error) {
 	p, err := pipeline.Compile(config)

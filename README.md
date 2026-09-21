@@ -6,11 +6,13 @@ callbacks, with optional mapping back to original UTF-8 byte offsets.
 
 The public API is [`Pipeline`](docs/Pipeline.md): `CompileJSON`, `Walk`,
 `WalkText`, and `WalkTextUnsafe`. Regex compilation and scanning are internal
-implementation details. `Split` stages accept the 25 exact strings in the
-[supported-pattern registry](docs/SupportedPatterns.md), with specialized
-scanners and no general regex fallback.
+implementation details. `Split` stages prefer specialized scanners for the 25
+exact strings in the [pattern registry](docs/SupportedPatterns.md). Other
+expressions fall back to Go's standard `regexp` package, with Go syntax and
+matching semantics.
 
-**v0.2.0:** this release replaces
+**v0.2.1:** adds standard-library regex fallback to the Pipeline API introduced
+in v0.2.0. Pipeline replaces
 the public regex API with `Pipeline`. `Regexp`, `Compile`, and `Cursor` are no
 longer exported from the root package. See the [migration guide](#migrating-from-v010)
 and [release notes](CHANGELOG.md).
@@ -90,8 +92,10 @@ func (p Piece) OriginalRange(start, end int) (Span, error)
 - Compiled pipelines are immutable and support concurrent and reentrant calls.
   The complete input is checked for valid UTF-8 before any callback. Empty input
   emits nothing; callback errors stop execution and are returned unchanged.
-- Regex strings in a `Split` configuration are matched exactly after JSON
-  decoding, without trimming, additional unescaping, normalization or fallback.
+- Regex strings select specialized scanners by exact spelling after JSON
+  decoding, without trimming, additional unescaping or normalization. Unregistered
+  spellings use Go `regexp`, including valid equivalent spellings. See
+  [fallback semantics and limits](docs/Pipeline.md#standard-library-regex-fallback).
 
 ## Migrating from v0.1.0
 
@@ -171,7 +175,10 @@ callback returns; storing a `Piece` does not extend its lifetime. Both text-only
 methods skip output alignment construction. Avoiding defensive copies with
 `WalkTextUnsafe` does not guarantee allocation-free execution.
 
-The 25 accepted regex strings and `ErrUnsupportedPattern` contract are unchanged.
+The 25 specialized regex strings retain their existing semantics. Since v0.2.1,
+unregistered expressions use Go `regexp`; `ErrUnsupportedPattern` is returned
+only when an expression is unregistered and Go cannot compile it. The error wraps
+the underlying `*regexp/syntax.Error`, accessible with `errors.As`.
 `Span`, `ErrInvalidUTF8`, and `ErrUninitialized` remain public;
 `ErrUninitialized` now describes a nil or zero-value Pipeline. Use `errors.Is`
 to check sentinels, including errors wrapped by `CompileJSON`, rather than matching
@@ -182,7 +189,8 @@ error messages. Configuration and callback errors are documented in the
 
 The library implements HF-compatible pre-tokenization for the supported
 configurations and pinned reference profiles. Compatibility claims are scoped
-to those settings and fixtures. It does not implement BPE, vocabulary lookup,
+to those settings and fixtures; arbitrary fallback expressions follow Go semantics
+and do not carry an HF compatibility guarantee. It does not implement BPE, vocabulary lookup,
 token IDs, special-token matching, Unicode normalization, Encoding postprocessing,
 or a complete Hugging Face tokenizer.
 
@@ -208,9 +216,10 @@ GOWORK=off go test -mod=readonly -run '^$' -bench 'Benchmark(Pipeline|CompileJSO
 GOWORK=off go test -mod=readonly -run '^$' -bench . -benchmem ./internal/regexp
 ```
 
-Existing Pipeline benchmarks cover Whitespace, Metaspace, ByteLevel and a
-Split/ByteLevel sequence; benchmark coverage does not yet include every supported
-component. All supported types have pinned HF oracle cases. The
+Existing Pipeline benchmarks cover Whitespace, Metaspace, ByteLevel, a
+Split/ByteLevel sequence and standard-library regex fallback; benchmark coverage
+does not yet include every supported component. All supported component types
+have pinned HF oracle cases; fallback has separate Go-reference tests. The
 [scenario coverage matrix](docs/Pipeline.md#scenario-coverage) maps component
 settings to tests and benchmarks; [fuzzing and shared contracts](docs/Pipeline.md#fuzzing-and-shared-contracts)
 describe the additional checks.

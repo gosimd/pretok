@@ -13,6 +13,10 @@ spellings, return `ErrUnsupportedPattern`. P01 `Split` uses bounded rune decodin
 `GOEXPERIMENT=simd` enables supported SIMD UTF-8 kernels from gosimd/unicode.
 Character classification and token-boundary selection remain scalar.
 
+Since v0.2.1, public Pipeline handles unregistered expressions with
+[standard-library regex fallback](Pipeline.md#standard-library-regex-fallback).
+The registry-only contract described here remains specific to `internal/regexp`.
+
 ## v0.1.0 release contract
 
 This section records the historical public contract for **v0.1.0**. The current

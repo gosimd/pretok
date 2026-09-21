@@ -17,7 +17,8 @@ Keep the library focused on pre-tokenization, including the implemented
 Metaspace/ByteLevel transformations and Sequence composition. Do not add BPE,
 vocabulary lookup, token IDs, normalization, special-token handling, Hub
 downloads, or a full tokenizer pipeline without an explicit request.
-Do not expand this into a general-purpose regex engine.
+Do not build a general-purpose regex engine. Pipeline delegates unregistered
+expressions to Go's standard `regexp` package, as introduced in v0.2.1.
 
 ## Public API and ownership
 
@@ -35,21 +36,25 @@ Do not expand this into a general-purpose regex engine.
   `Walk` pieces and `WalkTextUnsafe` strings are callback-scoped; `WalkText`
   strings may be retained. Preserve internal regex byte-span/append semantics.
 - Do not retain input or destination buffers. Keep reusable scratch internal.
-- In the first implementation, return an unsupported-pattern error for any string
-  absent from the supported registry, including malformed syntax. Do not add a
-  parser merely for syntax diagnostics. Never approximate or use a regex fallback.
+- Keep `internal/regexp` registry-only: unregistered strings return
+  `ErrUnsupportedPattern`. Pipeline handles the shared registry miss by compiling
+  with standard `regexp`. Prefer registered scanners; do not normalize expressions
+  or approximate unsupported Go syntax. Preserve the syntax error and public
+  `ErrUnsupportedPattern` when fallback compilation fails.
 
 ## Compiler correctness
 
-Use an explicit registry of exact regex strings for the first implementation.
+Use an explicit registry of exact regex strings for specialized scanners.
 The current corpus contains 25 unique strings; it is an implementation target,
 not a support claim. Keys are regex values after JSON decoding by the caller.
-Do not trim, unescape again, parse, or normalize the supplied expression.
+Do not trim, unescape again, or normalize the supplied expression. Only the
+standard-library fallback parses unregistered expressions.
 
 Several entries may share a prewritten scanner plan after their selected matches
 and split boundaries have been validated against the pinned reference. Register
-only implemented and validated entries. Keep unregistered equivalent spellings
-unsupported rather than attempting structural recognition.
+only implemented and validated entries. Unregistered equivalent spellings use
+standard `regexp` through Pipeline rather than structural recognition. Do not
+claim HF compatibility for arbitrary fallback expressions; Go semantics apply.
 
 AST parsing and broader recognition are future work. If introduced later, define
 the accepted dialect first and prove each normalization preserves selected matches
@@ -62,12 +67,14 @@ ASCII digits with Unicode numbers, or broaden literal spaces to whitespace
 without proof under the chosen semantics. Pin Unicode/reference versions where
 they affect results.
 
-Keep compilation outside the hot path. Runtime should execute dedicated scanner
-logic, not walk the regex AST or run a general regex virtual machine. Shared
+Keep compilation outside the hot path. Registered patterns execute dedicated
+scanner logic; unregistered Pipeline patterns execute Go `regexp`. Shared
 prefixes and character classification can be factored only when branch priority
 and consumption remain identical.
 
-Initially reject patterns that can produce zero-length matches. Runtime entry
+Specialized scanners produce non-empty matches. Pipeline fallback follows Go's
+empty-match selection, uses empty matches as boundaries, and emits no empty
+pieces. Preserve full-piece context for anchors and word boundaries. Runtime entry
 points must reject malformed UTF-8 before scanning; `Split` must leave `dst`
 unchanged on that error. Do not silently normalize or replace input bytes.
 
@@ -117,8 +124,11 @@ differential or fuzz coverage:
 
 - Exact reference-versus-scalar pieces and byte offsets.
 - Scalar-versus-SIMD parity for each available backend.
-- Registered exact spellings and aliases that should compile, plus unregistered
-  equivalent spellings, malformed expressions, and near misses that must fail.
+- Registered exact spellings and aliases select specialized scanners. Internal
+  regex compilation rejects unregistered strings; Pipeline accepts valid Go
+  expressions through fallback and rejects malformed or unsupported Go syntax.
+- Fallback versus standard `regexp`, including anchors, empty matches, all Split
+  behaviors, transformed source offsets, and unchanged registered-plan selection.
 - Ordered alternatives, scoped case folding, bounded number runs, contractions,
   Unicode letters/marks/numbers, punctuation, and mixed scripts.
 - Leading, internal, and trailing whitespace; tabs, CR, LF, CRLF, Unicode

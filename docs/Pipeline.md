@@ -1,10 +1,11 @@
 # Compiled pre-tokenizer pipelines
 
-This is the **v0.2.0 public API**, defined in [pretok.go](../pretok.go).
+This is the **v0.2.1 public API**, defined in [pretok.go](../pretok.go).
 See the [v0.1.0 migration guide](../README.md#migrating-from-v010). It implements
 pre-tokenization, not a complete tokenizer. The former root `Regexp`, `Compile`
 and `Cursor` API has moved to [internal/regexp](../internal/regexp); regex functionality is exposed
-through Pipeline's Split stage. The 25-string regex registry is unchanged.
+through Pipeline's Split stage. The 25-string specialized regex registry is
+unchanged; v0.2.1 adds Go `regexp` fallback for other expressions.
 
 ```go
 func CompileJSON(config []byte) (*Pipeline, error)
@@ -37,7 +38,8 @@ nothing. A nil or zero Pipeline is uninitialized.
 | `ByteLevel` | `add_prefix_space: true`, `trim_offsets: true`, `use_regex: true` |
 
 Split patterns must be exactly one of `{"Regex":"..."}` and
-`{"String":"..."}`. Regex accepts only the [25 registered strings](SupportedPatterns.md).
+`{"String":"..."}`. Regex prefers the [25 registered strings](SupportedPatterns.md)
+and otherwise compiles the expression with Go's standard `regexp` package.
 String is a literal, with no regex interpretation, and must be non-empty.
 All five behaviors are supported: `Removed`, `Isolated`, `Contiguous`,
 `MergedWithPrevious`, `MergedWithNext`. Names are case-sensitive. `invert` flips
@@ -61,9 +63,44 @@ minimal objects in addition to HF's serialized objects. Nesting is limited to
 as the whole configuration, not as a Sequence member. These are explicit library
 limits, not claims that every JSON accepted by HF is accepted here.
 
-`errors.Is` identifies `ErrInvalidConfig`, `ErrUnsupportedPreTokenizer`, or the
-existing `ErrUnsupportedPattern`. Errors include the configuration path where
-possible. Regex spelling is never trimmed, normalized, or unescaped a second time.
+`errors.Is` identifies `ErrInvalidConfig`, `ErrUnsupportedPreTokenizer`, or
+`ErrUnsupportedPattern`. The latter means both that the expression is absent from
+the registry and that Go cannot compile it; `errors.As` also exposes the underlying
+`*regexp/syntax.Error`. Errors include the configuration path where possible.
+Regex spelling is never trimmed, normalized, or unescaped a second time.
+
+### Standard-library regex fallback
+
+Since v0.2.1, unregistered Split regex strings use
+[Go `regexp`](https://pkg.go.dev/regexp), compiled once with the Pipeline.
+The internal registry-only compiler still rejects these strings with
+`ErrUnsupportedPattern`; Pipeline uses the same registry lookup and handles the
+miss with fallback. No caller setting is required. For example:
+
+```json
+{"type":"Split","pattern":{"Regex":"[A-Za-z]+|[0-9]+"},"behavior":"Isolated","invert":false}
+```
+
+Registered strings always retain their specialized scanner, even if Go could
+compile them. Other spellings follow Go's syntax, leftmost-first matching and
+Unicode rules. This is not general HF/Oniguruma compatibility: for example, Go
+`\d` and `\w` are ASCII classes, and Go rejects lookaround and backreferences.
+Registered HF expressions containing unsupported Go constructs remain supported.
+
+Fallback calls `FindAllStringIndex` on the complete previous-stage piece, so
+anchors and word boundaries retain their context. Matches use the whole regex;
+capturing groups do not create additional pieces. The resulting matches and gaps
+go through the usual five behaviors and `invert`. Empty matches mark boundaries
+but never emit empty pieces, including for the empty regex. Go ignores empty
+matches adjacent to a preceding match. For example, empty regex + `Isolated`
+splits `é中` into `é` and `中`; empty regex + `Removed, invert: true` emits nothing.
+`Contiguous` can merge gaps separated only by an empty match. Empty input still
+emits nothing for every configuration.
+
+Fallback materializes the selected match indices for each input piece before
+emitting its segments. This adds allocations and memory proportional to the
+number of matches; cancellation stops callbacks, but does not undo that search.
+No fallback optimization or allocation-free guarantee is provided.
 
 ## Execution and ownership
 
@@ -129,7 +166,8 @@ normalizes text nor restores positions before an external normalization step.
 ## Memory and performance
 
 Execution streams final pieces through callbacks and does not build a complete
-array of output or intermediate pieces. Each active transformation stage may
+array of output or intermediate pieces. Regex fallback does allocate a list of
+match indices for its current piece. Each active transformation stage may
 buffer its entire current input piece, so this is not constant-memory streaming
 over chunks of a source document. UTF-8 validation also examines the full input.
 
@@ -164,6 +202,9 @@ HF Tokenizers 0.23.2. They compare all three walking methods, whole-piece ranges
 internal ranges through HF's token-offset conversion. Built-in Unicode classes
 come from those exact components; they are separate from the existing HF 0.22.2
 regex profile. Compatibility is scoped to the documented settings and evidence.
+Fallback expressions have separate Go-reference tests and fuzzing in
+[`pipeline_regexp_test.go`](../pipeline_regexp_test.go); the HF fixture count
+does not include them. Registered-plan selection is checked independently.
 
 ### Scenario coverage
 
@@ -190,16 +231,18 @@ relative to [`BenchmarkPipeline/`](../pipeline_bench_test.go).
 | `UnicodeScripts/` | 46 / 1 | Mixed scripts, inherited marks, Han/kana adaptations, supplementary characters and long runs | None |
 | `Whitespace/` | 47 / 1 | Word/punctuation distinctions, marks, connectors, Unicode spaces, CRLF and long runs | `Whitespace/default/` |
 | `WhitespaceSplit/` | 47 / 1 | Same inputs as Whitespace, with its own HF split expectations | None |
-| `Split/` | 2,015 / 63 | All 25 registered patterns in isolated mode; five behaviors × invert for two regexes and two literals | Only inside the sequence above |
+| `Split/` | 2,015 / 63 | All 25 registered patterns in isolated mode; five behaviors × invert for two regexes and two literals | Registered patterns inside the sequence above; `Split/GoRegexpFallback/` measures unregistered Go regex |
 | `ByteLevel/` | 126 / 6 | Four prefix/regex combinations with trim=true; two long cases with trim=false | `ByteLevel/prefix=true,trim=true,regex=true/` only |
 | `Identity/` | 31 / 1 | JSON null | None |
 
 Every listed execution benchmark has the same four existing inputs
 (`short_ascii`, `short_mixed`, `long_ascii`, `long_mixed`) and three methods
-(`Walk`, `WalkText`, `WalkTextUnsafe`), giving 48 measured combinations.
-Compilation has one existing benchmark:
-`BenchmarkCompileJSON/Sequence/Split_ByteLevel-9c89680975f8`.
-Renaming these cases does not add workloads or change their timed operations.
+(`Walk`, `WalkText`, `WalkTextUnsafe`), giving 60 measured combinations.
+Compilation has two benchmarks:
+`BenchmarkCompileJSON/Sequence/Split_ByteLevel-9c89680975f8` and
+`BenchmarkCompileJSON/Split/GoRegexpFallback`.
+The fallback benchmark uses `\p{L}+|[0-9]+`; its semantics are checked against Go
+separately from the HF oracle fixtures. It adds 12 combinations in v0.2.1.
 
 Examples of individual oracle cases:
 
@@ -237,7 +280,8 @@ substitute for those Pipeline measurements.
 
 [`FuzzPipelineExecution`](../pipeline_fuzz_test.go) generates valid configurations
 for every component above, including literal Split, all 25 registered regexes,
-ByteLevel, empty/flat/nested Sequence and JSON null identity. Mutations change
+representative fallback regexes, ByteLevel, empty/flat/nested Sequence and JSON
+null identity. Mutations change
 stage order, settings and Unicode delimiters/replacements. Execution is bounded
 to four non-Sequence stages, four Sequence levels, a 64-byte configuration recipe
 and 4 KiB of input. Invalid byte sequences in fuzz data are replaced with U+FFFD
@@ -251,6 +295,12 @@ WalkTextUnsafe must emit the same texts without building alignment. WalkText's
 copying wrapper is covered by ownership tests and HF fixtures, rather than
 duplicating the execution fuzz loop. `FuzzCompileJSON` independently mutates raw
 JSON to exercise the compiler's acceptance/error behavior.
+
+[`FuzzPipelineRegexpFallback`](../pipeline_regexp_test.go) separately mutates regex
+syntax and input, then compares match-only and isolated output through all three
+methods with Go `regexp` match indices. It caps patterns at 256 bytes and inputs
+at 4 KiB, and excludes expressions rejected by Go. This checks fallback semantics,
+including empty matches and source offsets, against its actual reference engine.
 
 Shared API contracts are tested once at their owning layer in
 [`pipeline_test.go`](../pipeline_test.go):
@@ -266,7 +316,8 @@ Shared API contracts are tested once at their owning layer in
 These tests are not multiplied by component. Local fuzz invariants and agreement
 between execution methods cannot establish HF compatibility: the independent
 5,062-case HF oracle remains a separate required check. New fuzz failures should
-be minimized and checked against HF 0.23.2 before adding semantic expectations.
+be minimized and checked against HF 0.23.2 for supported HF components, or Go
+`regexp` for fallback expressions, before adding semantic expectations.
 See [fuzz commands and reproduction](Reproducibility.md#pipeline-fuzzing).
 
 ### Integration limits

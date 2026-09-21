@@ -1,9 +1,11 @@
 # Supported patterns
 
-This is the documentation registry of all **25 supported exact regex strings**,
+This is the documentation registry of all **25 specialized exact regex strings**,
 ordered by corpus ID. The [runtime registry](../internal/compile/registry.go)
 selects these expressions; every entry in the [25-string corpus](../testdata/corpus_patterns.json)
-is now implemented. Other regex strings remain unsupported. IDs are stable.
+is now implemented. IDs are stable. Since v0.2.1, Pipeline compiles other strings
+with Go `regexp`; they are outside this specialized registry and its HF evidence.
+See [fallback semantics](Pipeline.md#standard-library-regex-fallback).
 
 `regexp(r"...")` is documentation notation for a Split stage's `pattern.Regex`
 value, compiled through `pretok.CompileJSON`. It is not an additional public API.

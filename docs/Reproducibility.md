@@ -44,6 +44,7 @@ compositions; the compiler fuzzer separately checks arbitrary JSON.
 ```sh
 GOWORK=off go test -mod=readonly ./...
 GOWORK=off go test -mod=readonly -run '^$' -fuzz '^FuzzPipelineExecution$' -fuzztime=30s -parallel=4 .
+GOWORK=off go test -mod=readonly -run '^$' -fuzz '^FuzzPipelineRegexpFallback$' -fuzztime=30s -parallel=4 .
 GOWORK=off go test -mod=readonly -run '^$' -fuzz '^FuzzCompileJSON$' -fuzztime=30s -parallel=4 .
 GOWORK=off go test -mod=readonly -race .
 ```

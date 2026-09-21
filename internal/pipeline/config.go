@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"unicode/utf8"
 
@@ -52,6 +53,7 @@ type stage struct {
 	invert                              bool
 	literal                             string
 	regex                               *scan.Plan
+	fallback                            *regexp.Regexp
 	prefix, useRegex, individual, split bool
 	prepend                             string
 }
@@ -243,7 +245,12 @@ func (p *Program) add(raw []byte, depth int, path string) error {
 			var found bool
 			s.regex, found = compile.Lookup(expr)
 			if !found {
-				return fmt.Errorf("%w at %s.pattern.Regex", ErrUnsupportedPattern, path)
+				// The shared registry miss is internal/regexp.Compile's
+				// ErrUnsupportedPattern. Keep registered plans on their original path.
+				s.fallback, err = regexp.Compile(expr)
+				if err != nil {
+					return fmt.Errorf("%w at %s.pattern.Regex: %w", ErrUnsupportedPattern, path, err)
+				}
 			}
 		} else {
 			return bad("unknown pattern kind")
