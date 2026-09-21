@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 // Sample always measures one complete corpus batch per iteration. Compile rows
@@ -29,19 +29,19 @@ type Sample struct {
 	AllocsPerBatch *float64 `json:"allocations_per_batch"`
 }
 
-var spanSink []pretok.Span
-var regexpSink *pretok.Regexp
+var spanSink []regex.Span
+var regexpSink *regex.Regexp
 var checksumSink uint64
 
 func consume(acc uint64, a, b int) uint64 { return bits.RotateLeft64(acc+uint64(a), 7) ^ uint64(b) }
-func Operation(re *pretok.Regexp, b *Batch, engine string) (func() uint64, error) {
+func Operation(re *regex.Regexp, b *Batch, engine string) (func() uint64, error) {
 	if engine != "pretok-cursor" && engine != "pretok-reused" && engine != "pretok-fresh" {
 		return nil, fmt.Errorf("unknown Go engine %q", engine)
 	}
 	if !b.Verified {
 		return nil, fmt.Errorf("batch must pass live reference verification before measurement")
 	}
-	dst := make([]pretok.Span, 0, b.Capacity)
+	dst := make([]regex.Span, 0, b.Capacity)
 	return func() uint64 {
 		var sum uint64
 		for _, r := range b.Requests {
@@ -101,7 +101,7 @@ func MeasureCompile(pattern string, minTime time.Duration) Sample {
 	var n uint64
 	for {
 		for range 256 {
-			re, err := pretok.Compile(pattern)
+			re, err := regex.Compile(pattern)
 			if err != nil {
 				panic(err)
 			}

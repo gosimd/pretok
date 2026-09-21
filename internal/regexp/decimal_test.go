@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"crypto/sha256"
@@ -12,7 +12,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternP10 = `\A\p{Nd}{1,2}(?=\p{Nd}{3}+\z)`
@@ -20,19 +20,19 @@ const patternP10 = `\A\p{Nd}{1,2}(?=\p{Nd}{3}+\z)`
 // RE2 checks the entire subject and captures the selected prefix independently
 // of the scanner's counting algorithm. HF's {3}+ means repeated triples here.
 var p10Reference = func() *regexp.Regexp {
-	nd := `[` + referenceRangeBody("internal/scan/decimal_tables.go", "decimalRanges") + `]`
+	nd := `[` + referenceRangeBody("../scan/decimal_tables.go", "decimalRanges") + `]`
 	return regexp.MustCompile(`\A(` + nd + `{1,2})(?:` + nd + `{3})+\z`)
 }()
 
-func assertP10Reference(t testing.TB, re *pretok.Regexp, src string) {
+func assertP10Reference(t testing.TB, re *regex.Regexp, src string) {
 	t.Helper()
-	var want, split []pretok.Span
+	var want, split []regex.Span
 	if m := p10Reference.FindStringSubmatchIndex(src); m != nil {
-		want = []pretok.Span{{Start: m[2], End: m[3]}}
+		want = []regex.Span{{Start: m[2], End: m[3]}}
 		split = append(split, want...)
-		split = append(split, pretok.Span{Start: m[3], End: len(src)})
+		split = append(split, regex.Span{Start: m[3], End: len(src)})
 	} else if src != "" {
-		split = []pretok.Span{{End: len(src)}}
+		split = []regex.Span{{End: len(src)}}
 	}
 	if got := collect(t, re, src); !slices.Equal(got, want) {
 		t.Fatalf("%q: %v want %v", src, got, want)
@@ -55,9 +55,9 @@ func TestP10HFOffsets(t *testing.T) {
 		{"١٢٣٤", 2}, {"１٢𝟛4٥", 5}, {"𝟙𝟚٣４567", 4},
 		{"²123", 0}, {"Ⅳ123", 0}, {"123\U00011de0", 0}, {"123\U00010d40", 1},
 	} {
-		var want []pretok.Span
+		var want []regex.Span
 		if tc.end != 0 {
-			want = []pretok.Span{{End: tc.end}}
+			want = []regex.Span{{End: tc.end}}
 		}
 		if got := collect(t, re, tc.src); !slices.Equal(got, want) {
 			t.Fatalf("%q: %v want %v", tc.src, got, want)
@@ -67,7 +67,7 @@ func TestP10HFOffsets(t *testing.T) {
 	// Anchors refer to the supplied subject, including an independently supplied slice.
 	assertP10Reference(t, re, ("x１٢𝟛4٥")[1:])
 	for _, near := range []string{`\A\p{Nd}{1,2}(?=(?:\p{Nd}{3})+\z)`, `\A\p{Nd}{1,2}(?=\p{Nd}{3}\z)`, `\A\p{N}{1,2}(?=\p{N}{3}+\z)`, patternP10 + " ", "(?:" + patternP10 + ")"} {
-		if r, err := pretok.Compile(near); r != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
+		if r, err := regex.Compile(near); r != nil || !errors.Is(err, regex.ErrUnsupportedPattern) {
 			t.Fatalf("accepted %q", near)
 		}
 	}
@@ -98,7 +98,7 @@ func TestP10DecimalRuns(t *testing.T) {
 }
 
 func TestP10Profile(t *testing.T) {
-	data, err := os.ReadFile("testdata/patterns/P10/manifest.json")
+	data, err := os.ReadFile("../../testdata/patterns/P10/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestP10Profile(t *testing.T) {
 	if m.Pattern != patternP10 || hex.EncodeToString(sum[:]) != m.PatternSHA {
 		t.Fatal("pattern differs from provenance")
 	}
-	for path, want := range map[string]string{"internal/scan/decimal_tables.go": m.TablesSHA, "testdata/patterns/generate_decimal_tables.py": m.GeneratorSHA} {
+	for path, want := range map[string]string{"../scan/decimal_tables.go": m.TablesSHA, "../../testdata/patterns/generate_decimal_tables.py": m.GeneratorSHA} {
 		b, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)

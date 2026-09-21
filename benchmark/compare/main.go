@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"github.com/gosimd/pretok"
-	"github.com/gosimd/pretok/internal/bench"
 	"io"
 	"os"
 	"os/exec"
 	"runtime"
 	"time"
+
+	regex "github.com/gosimd/pretok/internal/regexp"
+	"github.com/gosimd/pretok/internal/regexp/bench"
 )
 
 type native struct {
@@ -94,7 +95,7 @@ func main() {
 	runtime.GOMAXPROCS(1)
 	m, batches, err := bench.Load("benchmark/corpus", "P01")
 	must(err)
-	re, err := pretok.Compile(m.Pattern)
+	re, err := regex.Compile(m.Pattern)
 	must(err)
 	ref, ready, err := startNative(os.Args[1], "benchmark/corpus", "testdata/patterns/P01/cases.jsonl.gz", "P01")
 	must(err)

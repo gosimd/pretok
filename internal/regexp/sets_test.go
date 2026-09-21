@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 // Exact independent literals; these are not copied from the production registry.
@@ -45,7 +45,7 @@ func TestExactSets(t *testing.T) {
 				if near == p {
 					continue
 				}
-				if _, err := pretok.Compile(near); !errors.Is(err, pretok.ErrUnsupportedPattern) {
+				if _, err := regex.Compile(near); !errors.Is(err, regex.ErrUnsupportedPattern) {
 					t.Fatalf("near miss accepted: %q", near)
 				}
 			}
@@ -57,16 +57,16 @@ func TestExactSets(t *testing.T) {
 func TestExactSetsHFExamples(t *testing.T) {
 	for _, tc := range []struct {
 		p, src string
-		want   []pretok.Span
+		want   []regex.Span
 	}{
-		{patternP11, "\r\n", []pretok.Span{{0, 1}, {1, 2}}},
-		{patternP21, "A\u0301中𐐀", []pretok.Span{{3, 6}}},
-		{patternP17, "\u2003\u2003X", []pretok.Span{{0, 6}}},
-		{patternP18, "\u3000", []pretok.Span{{0, 3}}},
-		{patternP18, "\u3000\u3000", []pretok.Span{{0, 6}}},
-		{patternP18, "\u2003\u2003X", []pretok.Span{{3, 7}}},
-		{patternP08, "A\u0301中𐐀", []pretok.Span{{0, 1}, {6, 10}}},
-		{patternP23, "[abc] (abc) a|b .,!?:;_", []pretok.Span{{0, 5}, {7, 10}, {11, 13}, {14, 15}, {20, 23}}},
+		{patternP11, "\r\n", []regex.Span{{0, 1}, {1, 2}}},
+		{patternP21, "A\u0301中𐐀", []regex.Span{{3, 6}}},
+		{patternP17, "\u2003\u2003X", []regex.Span{{0, 6}}},
+		{patternP18, "\u3000", []regex.Span{{0, 3}}},
+		{patternP18, "\u3000\u3000", []regex.Span{{0, 6}}},
+		{patternP18, "\u2003\u2003X", []regex.Span{{3, 7}}},
+		{patternP08, "A\u0301中𐐀", []regex.Span{{0, 1}, {6, 10}}},
+		{patternP23, "[abc] (abc) a|b .,!?:;_", []regex.Span{{0, 5}, {7, 10}, {11, 13}, {14, 15}, {20, 23}}},
 	} {
 		got := collect(t, compiledPattern(t, tc.p), tc.src)
 		if !slices.Equal(got, tc.want) {

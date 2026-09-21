@@ -1,58 +1,36 @@
 # pretok
 
-`github.com/gosimd/pretok` compiles common LLM pre-tokenization regex strings into
-specialized Go scanners. Compile once, then find byte boundaries without a regex
-engine in the scanning path.
+`github.com/gosimd/pretok` compiles Hugging Face pre-tokenizer configurations into
+reusable Go pipelines. Compile once, then split and transform text through
+callbacks, with optional mapping back to original UTF-8 byte offsets.
 
-The current checkout also provides [`CompileJSON`, `Pipeline.Walk`,
-`Pipeline.WalkText`, and `Pipeline.WalkTextUnsafe`](docs/Pipeline.md) for HF
-pre-tokenizer configurations, including text transformations and original
-byte-offset mapping. This additive
-API is unreleased; the existing `Regexp` contract remains unchanged.
-`WalkText` strings can be retained; `WalkTextUnsafe` avoids defensive copies and
-lends strings only for the duration of the callback.
+The public API is [`Pipeline`](docs/Pipeline.md): `CompileJSON`, `Walk`,
+`WalkText`, and `WalkTextUnsafe`. Regex compilation and scanning are internal
+implementation details. `Split` stages accept the 25 exact strings in the
+[supported-pattern registry](docs/SupportedPatterns.md), with specialized
+scanners and no general regex fallback.
 
-**Status:** all 25 exact strings in the [supported-pattern registry](docs/SupportedPatterns.md)
-are implemented and checked against pinned Hugging Face references. On supported
-SIMD builds, P01 `Split` uses a bounded rune buffer for UTF-8 conversion;
-token classification and boundary decisions remain scalar. The
-[v0.1.0 public contract](docs/Regexp.md#v010-release-contract) is unchanged.
+**Status:** this is an unreleased breaking API change on `pretok-api`.
+`Regexp`, `Compile`, and `Cursor` are no longer exported from the root package.
+The published v0.1.0 tag retains its [historical regex API](docs/Regexp.md#v010-release-contract);
+it does not provide the Pipeline API described here.
 
-## Installation
+## Requirements
 
 Requires **Go 1.27.0 or newer** and `github.com/gosimd/unicode v0.1.2` (resolved by
 Go modules). Using the library requires neither Rust, Python nor a native regex
 library. The dependency is pinned in `go.mod` and verified through `go.sum`.
 
-Install the v0.1.0 version with:
-
-```sh
-go get github.com/gosimd/pretok@v0.1.0
-```
-
-The P01 buffering optimization described here is in the current checkout; it is
-not part of the v0.1.0 tag.
-
-The examples and tests for the current checkout can be run with:
+Run the examples and tests from this checkout with:
 
 ```sh
 GOWORK=off go test -mod=readonly ./...
 ```
 
-Build your application with `GOEXPERIMENT=simd` to enable gosimd/unicode's supported
-ARM64/AMD64 SIMD paths. Without this setting, or on unsupported configurations,
-P01 keeps its portable byte scanner with the same boundaries.
-
-On eligible builds, P01 `Split` validates the entire input, then decodes into a local 1,024-rune
-(4 KiB) buffer. Tokens can cross buffers. Inputs shorter than 256 bytes use the
-existing byte scanner. Public `Cursor` keeps its independent, copyable byte-scanning
-state; it does not borrow mutable rune scratch. Other patterns keep their existing
-scanners.
-
 ## Quick start
 
-This is the exact P07 pattern: groups of one to three Unicode number scalars.
-The example is also checked by [Go example tests](example_test.go).
+Pass the JSON value of `pre_tokenizer`, not the entire `tokenizer.json`.
+This example is also checked by [Go example tests](pipeline_example_test.go).
 
 ```go
 package main
@@ -64,78 +42,68 @@ import (
 )
 
 func main() {
-    re, err := pretok.Compile(`\p{N}{1,3}`)
+    p, err := pretok.CompileJSON([]byte(`{"type":"Metaspace"}`))
     if err != nil {
         panic(err)
     }
-
-    input := "x1234y"
-    spans, err := re.Split(input, nil)
+    var pieces []string
+    err = p.WalkText("Hello world", func(text string) error {
+        pieces = append(pieces, text)
+        return nil
+    })
     if err != nil {
         panic(err)
     }
-    for _, span := range spans {
-        fmt.Printf("%q [%d,%d)\n", input[span.Start:span.End], span.Start, span.End)
+    for _, text := range pieces {
+        fmt.Println(text)
     }
 }
 // Output:
-// "x" [0,1)
-// "123" [1,4)
-// "4" [4,5)
-// "y" [5,6)
+// ▁Hello
+// ▁world
 ```
-
-For repeated calls, keep the compiled expression and reuse caller-owned capacity:
-
-```go
-spans, err = re.Split(nextInput, spans[:0])
-```
-
-Check `err` before consuming the result. `Split` appends to its destination;
-passing `spans` instead of `spans[:0]` retains the existing entries as a prefix.
 
 ## API and behavior
 
 ```go
-func Compile(pattern string) (*Regexp, error)
-func (r *Regexp) Cursor(src string) (Cursor, error)
-func (c *Cursor) Next() (Span, bool)
-func (r *Regexp) Split(src string, dst []Span) ([]Span, error)
+func CompileJSON(config []byte) (*Pipeline, error)
+func (p *Pipeline) Walk(text string, emit func(Piece) error) error
+func (p *Pipeline) WalkText(text string, emit func(string) error) error
+func (p *Pipeline) WalkTextUnsafe(text string, emit func(string) error) error
+func (p Piece) Text() string
+func (p Piece) OriginalRange(start, end int) (Span, error)
 ```
 
-- `Compile` accepts the exact string after JSON decoding by the caller. It does
-  not trim, unescape again, parse or normalize. Any unregistered string, including
-  malformed syntax and equivalent spellings, returns `ErrUnsupportedPattern`.
-- `Cursor` returns non-empty matches and skips unmatched gaps. For `x1234y`
-  above it returns only `123` and `4`.
-- `Split` isolates each match and each maximal unmatched gap. Its appended pieces
-  cover the input; empty input appends nothing.
-- `Span{Start, End}` uses half-open UTF-8 byte offsets into the supplied string.
-  The bytes are preserved. All scanning entry points reject malformed UTF-8 with
-  `ErrInvalidUTF8`; `Split` leaves the destination unchanged on error.
-- A compiled `Regexp` is immutable and supports concurrent scans with independent
-  cursors and buffers. A cursor borrows its input and owns its iteration state.
-  `Regexp` and `Split` retain neither input nor destination buffers.
-- Scanning with a nil or zero-value `Regexp` returns `ErrUninitialized`. Use
-  `errors.Is` for error handling; see the [executable examples](example_test.go).
+- Supported components: `BertPreTokenizer`, `CharDelimiterSplit`, `Digits`,
+  `Metaspace`, `Punctuation`, `Sequence`, `UnicodeScripts`, `Whitespace`,
+  `WhitespaceSplit`, `Split`, and `ByteLevel`. See the [configuration contract](docs/Pipeline.md)
+  for supported settings, defaults and compatibility limits.
+- `Walk` supplies transformed text and original byte-offset mapping. A `Piece`,
+  its text and alignment are valid only during the callback.
+- `WalkText` copies each emitted string; callers may retain or process it
+  asynchronously after the callback returns.
+- `WalkTextUnsafe` avoids defensive copies. Strings are valid only during the
+  callback; subsequent execution may overwrite their memory. Use `strings.Clone`
+  inside the callback before retaining or asynchronously processing them.
+- Compiled pipelines are immutable and support concurrent and reentrant calls.
+  The complete input is checked for valid UTF-8 before any callback. Empty input
+  emits nothing; callback errors stop execution and are returned unchanged.
+- Regex strings in a `Split` configuration are matched exactly after JSON
+  decoding, without trimming, additional unescaping, normalization or fallback.
 
-The [Regexp contract](docs/Regexp.md) specifies error precedence, cursor copies,
-ownership and v0.1.x compatibility. The [pattern registry](docs/SupportedPatterns.md)
-lists exact expressions, stable P01–P25 IDs and pinned tokenizer examples.
+To migrate isolated regex splitting, compile
+`{"type":"Split","pattern":{"Regex":"..."},"behavior":"Isolated","invert":false}`
+and consume final pieces through `Walk` or either text-only method. Build the JSON
+with `encoding/json` when the pattern comes from a Go string. `Walk` maps source
+offsets through any subsequent transformations.
 
 ## Integration boundary
 
-`Regexp` handles regex boundaries only. The separate [Pipeline API](docs/Pipeline.md)
-adds built-in pre-tokenizers, stage composition, Metaspace and ByteLevel text
-mapping. The library does not implement BPE, vocabulary lookup, token IDs,
-special-token matching, Unicode normalization, Encoding postprocessing, or a
-complete Hugging Face tokenizer. There is no generic regex fallback.
-
-`Split` implements isolated splitting with unmatched gaps retained. Other HF
-split behaviors and `invert` settings are not inferred from a pattern. When
-composing stages, the caller passes each prior-stage piece separately and adds
-its base offset where needed. Use `Cursor` only when dropping gaps is intended.
-Regex support alone does not establish complete tokenizer compatibility.
+The library implements HF-compatible pre-tokenization for the supported
+configurations and pinned reference profiles. Compatibility claims are scoped
+to those settings and fixtures. It does not implement BPE, vocabulary lookup,
+token IDs, special-token matching, Unicode normalization, Encoding postprocessing,
+or a complete Hugging Face tokenizer.
 
 ## Validation and performance
 
@@ -146,34 +114,43 @@ GOWORK=off go test -mod=readonly ./...
 GOWORK=off go test -mod=readonly -race ./...
 GOWORK=off go vet -mod=readonly ./...
 GOWORK=off GOEXPERIMENT=simd go test -mod=readonly ./...
-GOWORK=off GOEXPERIMENT=simd go test -mod=readonly -race ./...
 ```
 
-[Reproducibility](docs/Reproducibility.md) describes the pinned Unicode tables,
-fixture generators and live HF correctness checks. Benchmark reference spans
-are generated in memory; they are not stored in the shared input corpus.
+Public Pipeline tests, examples and benchmarks live in the root package.
+Internal regex tests and microbenchmarks live alongside their API in
+`internal/regexp`; scanner-specific tests remain in `internal/scan`.
 
-See the [benchmark instructions](benchmark/README.md), [methodology](docs/Benchmark.md)
-and [completed reports](benchmark/results/README.md). Reports distinguish matches
-from isolated pieces, fresh from reused destinations, and natural text from
-synthetic cases. Their machine, toolchain, source and corpus fingerprints scope
-the measurements; historical results are not measurements of every later commit.
+```sh
+# Public pre-tokenization API, including transformations and sequences.
+GOWORK=off go test -mod=readonly -run '^$' -bench 'Benchmark(Pipeline|CompileJSON)' -benchmem .
+# Internal regex compilation and boundary scanning.
+GOWORK=off go test -mod=readonly -run '^$' -bench . -benchmem ./internal/regexp
+```
 
-The [P01 integration report](benchmark/results/P01/2026-09-16-apple-m5-rune-split/REPORT.md)
-measures the buffered public Split against its previous implementation, including
-ordinary-build controls, short inputs, fresh/reused output and known regressions.
+Existing Pipeline benchmarks cover Whitespace, Metaspace, ByteLevel and a
+Split/ByteLevel sequence. The other supported components are also benchmark
+targets; this API reorganization does not add new cases or claim complete
+benchmark coverage. The existing pipeline oracle tests cover all supported types.
+
+[Reproducibility](docs/Reproducibility.md) describes pinned Unicode tables,
+fixture generators and live HF checks. The [regex benchmark instructions](benchmark/README.md),
+[methodology](docs/Benchmark.md) and [completed reports](benchmark/results/README.md)
+describe the internal regex subsystem. Historical results retain their measured
+source revisions and do not establish current Pipeline performance.
 
 ## Repository guide
 
 | Path | Purpose |
 | --- | --- |
-| [regexp.go](regexp.go) | Public API |
-| [pipeline.go](pipeline.go) | Compiled JSON pipeline and callback-scoped pieces |
+| [pipeline.go](pipeline.go) | Public Pipeline API, pieces, source spans and errors |
+| [pipeline_test.go](pipeline_test.go), [pipeline_bench_test.go](pipeline_bench_test.go) | Public API compatibility tests and benchmarks |
 | [internal/pipeline](internal/pipeline) | Stage execution, private buffers, alignment and HF built-in classes |
-| [internal/compile](internal/compile) | Exact-string registry and plan selection |
+| [internal/regexp](internal/regexp) | Internal regex API with its tests, examples and microbenchmarks |
+| [internal/regexp/bench](internal/regexp/bench) | Regex corpus validation, measurements and reports |
+| [internal/compile](internal/compile) | Exact-string registry and plan selection shared by regex and Pipeline |
 | [internal/scan](internal/scan) | Scanner plans, P01 rune buffering and pinned Unicode tables |
-| [testdata](testdata) | Pattern provenance, generators and regression fixtures |
-| [benchmark](benchmark) | Shared corpus, native reference runner and reports |
+| [testdata](testdata) | Pipeline and regex provenance, generators and regression fixtures |
+| [benchmark](benchmark) | Shared corpus, native regex reference runner and historical reports |
 | [CHANGELOG.md](CHANGELOG.md) | Release notes |
 
 ## License

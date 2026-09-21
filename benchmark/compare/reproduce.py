@@ -5,7 +5,6 @@ import io
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import tarfile
 
@@ -47,7 +46,14 @@ def main():
     for name in ('baseline', 'current'):
         source = work / name / 'cmd/p01integration/main.go'
         source.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(HERE / 'main.go', source)
+        harness = (HERE / 'main.go').read_text()
+        # Published comparisons may predate the internal regexp package.
+        if not (work / name / 'internal/regexp/regexp.go').exists():
+            harness = harness.replace('"github.com/gosimd/pretok/internal/regexp"',
+                                      '"github.com/gosimd/pretok"')
+            harness = harness.replace('"github.com/gosimd/pretok/internal/regexp/bench"',
+                                      '"github.com/gosimd/pretok/internal/bench"')
+        source.write_text(harness)
     if args.prepare_only:
         print(work)
         return

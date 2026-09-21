@@ -1,10 +1,11 @@
-# Regexp
+# Internal Regexp
 
-`pretok.Regexp` represents one pre-tokenization regular expression compiled into
-an immutable, specialized scanner. `pretok` is limited to regex-based boundary
-detection; it does not implement a complete Hugging Face pre-tokenizer pipeline.
+`internal/regexp.Regexp` represents one pre-tokenization regular expression
+compiled into an immutable, specialized scanner. It is an internal boundary
+primitive; the library's public pre-tokenization API is [Pipeline](Pipeline.md).
+The existing regex tests, examples and microbenchmarks live in `internal/regexp`.
 
-**Status:** the [Go API](../regexp.go) supports the 25 exact strings in the
+**Status:** the [internal API](../internal/regexp/regexp.go) supports the 25 exact strings in the
 [supported-pattern registry](SupportedPatterns.md), which lists their IDs,
 expressions and tokenizer examples. Unregistered strings, including equivalent
 spellings, return `ErrUnsupportedPattern`. P01 `Split` uses bounded rune decoding;
@@ -13,7 +14,10 @@ Character classification and token-boundary selection remain scalar.
 
 ## v0.1.0 release contract
 
-This document fixes the public contract for **v0.1.0**. The API, compilation,
+This section records the historical public contract for **v0.1.0**. The current
+checkout intentionally removes that public surface; it is not a v0.1.x patch.
+The scanner behavior remains covered by the relocated internal tests.
+At the v0.1.0 revision, the API, compilation,
 iteration, splitting, and
 ownership sections below are normative. Pattern-specific sections describe the
 selected-match semantics. The release's [supported-pattern registry](SupportedPatterns.md)
@@ -109,7 +113,8 @@ unchanged: an initial `'s` still matches before a following combining mark.
 
 See [P01 fixtures](../testdata/patterns/P01/manifest.json) for pinned source and
 oracle details. Compatibility here is for matches and isolated splits; the source
-model's complete pre-tokenizer pipeline is not implemented by this library.
+model's complete pre-tokenizer configuration must be assessed separately under
+the [Pipeline contract](Pipeline.md).
 
 The plan selects the L or L|M table at compilation time. The word and symbol
 scanners share that class, with one Unicode lookup and a common ASCII fast path.
@@ -279,7 +284,7 @@ regex-stage compatibility with the pinned profile, not a complete HF pipeline.
 No new Unicode tables or regex parsing are needed. P04 retains its existing
 runtime entry point; the suffix plan reuses its word matcher and shared tail.
 
-## API
+## Internal API
 
 ```go
 type Span struct {
@@ -297,7 +302,7 @@ func (r *Regexp) Split(src string, dst []Span) ([]Span, error)
 
 The name `Regexp` identifies the compiled expression. Scanner algorithms are
 implementation details. One `Regexp` represents one expression; composition of
-multiple expressions belongs to the surrounding tokenizer.
+multiple expressions and other pre-tokenizers belongs to Pipeline.
 
 ## Compilation and errors
 

@@ -11,8 +11,8 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
 	"github.com/gosimd/pretok/internal/compile"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 func fixture(t *testing.T, text string) (string, Manifest) {
@@ -61,7 +61,7 @@ func TestLoadAndGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := &batches[0]
-	re, _ := pretok.Compile(compile.QwenPattern)
+	re, _ := regex.Compile(compile.QwenPattern)
 	if b.Verified || b.Spans != 0 {
 		t.Fatal("load constructed references")
 	}
@@ -111,7 +111,7 @@ func TestVerifyRejectsWrongOrIncompleteOracle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	re, _ := pretok.Compile(m.Pattern)
+	re, _ := regex.Compile(m.Pattern)
 	for _, kind := range []string{"split", "matches", "pattern", "input", "range", "count", "corpus"} {
 		t.Run(kind, func(t *testing.T) {
 			b := batches[0]
@@ -193,7 +193,7 @@ func TestSharedCorpusManifest(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		re, _ := pretok.Compile(m.Pattern)
+		re, _ := regex.Compile(m.Pattern)
 		if err := Verify(re, m.PatternSHA, &batches[0], reference(batches[0], m.Pattern, spans, spans)); err != nil {
 			t.Fatal(err)
 		}
@@ -221,7 +221,7 @@ func TestP02LiveGateWithGaps(t *testing.T) {
 			t.Fatal(err)
 		}
 		b := &batches[0]
-		re, err := pretok.Compile(m.Pattern)
+		re, err := regex.Compile(m.Pattern)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -253,7 +253,7 @@ func TestP03LiveGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	b := &batches[0]
-	re, err := pretok.Compile(m.Pattern)
+	re, err := regex.Compile(m.Pattern)
 	if err != nil {
 		t.Fatal(err)
 	}

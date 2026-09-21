@@ -1,9 +1,7 @@
-// Package pretok compiles supported pre-tokenization regular expressions and
-// HF pre-tokenizer configurations into specialized scanners. Regexp preserves
-// input bytes and returns spans; Pipeline can transform text and map offsets
-// through callback-scoped pieces. Regex compilation uses exact-string lookup,
-// without parsing or a general regex fallback.
-package pretok
+// Package regexp provides internal match iteration and isolated splitting for
+// registered pre-tokenization regex strings. Compilation uses exact-string
+// lookup, without parsing or a general regex fallback.
+package regexp
 
 import (
 	"errors"
@@ -20,8 +18,7 @@ var (
 	ErrUnsupportedPattern = errors.New("pretok: unsupported pattern")
 	// ErrInvalidUTF8 means the supplied input is not valid UTF-8.
 	ErrInvalidUTF8 = errors.New("pretok: invalid UTF-8")
-	// ErrUninitialized means a nil or zero-value Regexp or Pipeline was used.
-	// Its historical error text is retained for compatibility.
+	// ErrUninitialized means a nil or zero-value Regexp was used.
 	ErrUninitialized = errors.New("pretok: uninitialized regexp")
 )
 
@@ -44,7 +41,7 @@ type Regexp struct {
 // including malformed expressions and unregistered equivalent spellings, return
 // nil and ErrUnsupportedPattern. No parsing, normalization, or fallback occurs.
 // See docs/SupportedPatterns.md for the supported exact expressions and
-// docs/Regexp.md for the release contract.
+// docs/Regexp.md for the internal scanner contract.
 func Compile(pattern string) (*Regexp, error) {
 	plan, ok := compile.Lookup(pattern)
 	if !ok {

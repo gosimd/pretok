@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gosimd/pretok"
-	"github.com/gosimd/pretok/internal/bench"
 	"github.com/gosimd/pretok/internal/compile"
+	regex "github.com/gosimd/pretok/internal/regexp"
+	"github.com/gosimd/pretok/internal/regexp/bench"
 )
 
 type native struct {
@@ -250,7 +250,7 @@ func run() error {
 		return err
 	}
 	defer ref.close()
-	re, err := pretok.Compile(manifest.Pattern)
+	re, err := regex.Compile(manifest.Pattern)
 	if err != nil {
 		return err
 	}

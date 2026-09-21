@@ -22,10 +22,16 @@ GOWORK=off GOEXPERIMENT=simd go test -mod=readonly ./...
 GOWORK=off GOEXPERIMENT=simd go test -mod=readonly -race ./...
 ```
 
-The tests read the existing P05 and P01 regression fixtures and pinned Unicode
+The root package tests the public Pipeline API against HF 0.23.2 fixtures for
+all supported component types. Internal regex tests and microbenchmarks are in
+`internal/regexp`; the cross-engine regex harness is in `internal/regexp/bench`.
+No new cases are introduced by this reorganization.
+
+The regex tests read the existing P05 and P01 regression fixtures and pinned Unicode
 profiles, and run inline regressions and independent differential checks for the
 other patterns. They do not contact Hugging Face or invoke Python/Rust. The
-[executable examples](../example_test.go) run as part of `go test`.
+[Pipeline examples](../pipeline_example_test.go) and
+[internal regex examples](../internal/regexp/example_test.go) run as part of `go test`.
 P01 also compares its buffered decoder path against the byte scanner at tiny
 lookahead capacities and 1K/2K/4K/8K rune boundaries. SIMD kernel selection belongs
 to `gosimd/unicode v0.1.2`; no local checkout of that module is required.
@@ -75,8 +81,9 @@ binary changes `oracle_native_sha256`. Python/zlib versions can also change gzip
 bytes. Inspect any differences rather than accepting updated hashes blindly;
 compare decompressed fixtures and table membership as well. A changed shared
 profile also requires reviewing dependent profile hashes, including P14/P25.
-Reference upgrades are a compatibility decision under the
-[release contract](Regexp.md#compatibility-policy-for-v01x).
+Reference upgrades remain an explicit compatibility decision. The
+[v0.1.x policy](Regexp.md#compatibility-policy-for-v01x) describes the historical
+public regex API; current pre-tokenization follows the [Pipeline contract](Pipeline.md).
 
 ## Shared benchmark input corpus
 

@@ -5,8 +5,9 @@ ordered by corpus ID. The [runtime registry](../internal/compile/registry.go)
 selects these expressions; every entry in the [25-string corpus](../testdata/corpus_patterns.json)
 is now implemented. Other regex strings remain unsupported. IDs are stable.
 
-`regexp(r"...")` is documentation notation for the string passed to `pretok.Compile`,
-not an additional public API. Raw string literals preserve every backslash.
+`regexp(r"...")` is documentation notation for a Split stage's `pattern.Regex`
+value, compiled through `pretok.CompileJSON`. It is not an additional public API.
+Raw string literals preserve every backslash.
 For P09, P11 and P22, normal `"\r\n"` literals are concatenated with raw fragments
 to represent actual CR/LF characters without hiding them in the Markdown source.
 These expressions use Python string-literal syntax; no regex parsing or
@@ -16,8 +17,8 @@ Each entry lists at most three tokenizer examples from the recorded research
 snapshot, with links to immutable file revisions and the location of the regex.
 Examples are not a popularity ranking or a claim about the current `main` branch.
 A tokenizer can use several listed patterns in a Sequence. Recognizing its regex
-does not imply support for its entire tokenizer pipeline; see [Regexp](Regexp.md)
-for matching, gap handling and compatibility contracts.
+does not imply support for its entire tokenizer pipeline; see [Pipeline](Pipeline.md)
+for the public configuration contract and [internal Regexp](Regexp.md) for scanner semantics.
 
 Jump to: [P01](#p01) · [P02](#p02) · [P03](#p03) · [P04](#p04) · [P05](#p05) · [P06](#p06) · [P07](#p07) · [P08](#p08) · [P09](#p09) · [P10](#p10) · [P11](#p11) · [P12](#p12) · [P13](#p13) · [P14](#p14) · [P15](#p15) · [P16](#p16) · [P17](#p17) · [P18](#p18) · [P19](#p19) · [P20](#p20) · [P21](#p21) · [P22](#p22) · [P23](#p23) · [P24](#p24) · [P25](#p25).
 

@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"bufio"
@@ -15,7 +15,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternCaseWordsSuffix = `[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]*[\p{Ll}\p{Lm}\p{Lo}\p{M}]+(?i:'s|'t|'re|'ve|'m|'ll|'d)?|[^\r\n\p{L}\p{N}]?[\p{Lu}\p{Lt}\p{Lm}\p{Lo}\p{M}]+[\p{Ll}\p{Lm}\p{Lo}\p{M}]*(?i:'s|'t|'re|'ve|'m|'ll|'d)?|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n/]*|\s*[\r\n]+|\s+(?!\S)|\s+`
@@ -39,43 +39,43 @@ const patternMarks = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?[\p{L}\p{M}
 
 const pattern = `(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+`
 
-func compiled(t testing.TB) *pretok.Regexp { return compiledPattern(t, pattern) }
+func compiled(t testing.TB) *regex.Regexp { return compiledPattern(t, pattern) }
 
-func compiledPattern(t testing.TB, pattern string) *pretok.Regexp {
+func compiledPattern(t testing.TB, pattern string) *regex.Regexp {
 	t.Helper()
-	re, err := pretok.Compile(pattern)
+	re, err := regex.Compile(pattern)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return re
 }
 
-func collect(t testing.TB, re *pretok.Regexp, src string) []pretok.Span {
+func collect(t testing.TB, re *regex.Regexp, src string) []regex.Span {
 	t.Helper()
 	c, err := re.Cursor(src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var spans []pretok.Span
+	var spans []regex.Span
 	for span, ok := c.Next(); ok; span, ok = c.Next() {
 		spans = append(spans, span)
 	}
-	if span, ok := c.Next(); ok || span != (pretok.Span{}) {
+	if span, ok := c.Next(); ok || span != (regex.Span{}) {
 		t.Fatal("cursor not exhausted")
 	}
 	return spans
 }
 
 func TestOracle(t *testing.T) {
-	testOracle(t, "testdata/qwen", pattern, "internal/scan/unicode_tables.go")
+	testOracle(t, "../../testdata/qwen", pattern, "../scan/unicode_tables.go")
 }
 
 func TestP01Oracle(t *testing.T) {
-	testOracle(t, "testdata/patterns/P01", patternMarks, "internal/scan/word_tables.go")
+	testOracle(t, "../../testdata/patterns/P01", patternMarks, "../scan/word_tables.go")
 }
 
 func testOracle(t *testing.T, directory, pattern, table string) {
-	re, err := pretok.Compile(pattern)
+	re, err := regex.Compile(pattern)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,12 +118,12 @@ func testOracle(t *testing.T, directory, pattern, table string) {
 	lines := bufio.NewScanner(decoded)
 	lines.Buffer(make([]byte, 4096), 4<<20)
 	count := 0
-	var dst []pretok.Span
+	var dst []regex.Span
 	for lines.Scan() {
 		count++
 		var tc struct {
 			Input          string
-			Matches, Split []pretok.Span
+			Matches, Split []regex.Span
 		}
 		if err := json.Unmarshal(lines.Bytes(), &tc); err != nil {
 			t.Fatal(err)
@@ -148,7 +148,7 @@ func testOracle(t *testing.T, directory, pattern, table string) {
 	}
 }
 
-func assertPartition(t testing.TB, src string, spans []pretok.Span) {
+func assertPartition(t testing.TB, src string, spans []regex.Span) {
 	t.Helper()
 	end := 0
 	for _, s := range spans {
@@ -166,7 +166,7 @@ func assertPartition(t testing.TB, src string, spans []pretok.Span) {
 }
 
 func TestSupportedCorpusStrings(t *testing.T) {
-	data, err := os.ReadFile("testdata/corpus_patterns.json")
+	data, err := os.ReadFile("../../testdata/corpus_patterns.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,13 +176,13 @@ func TestSupportedCorpusStrings(t *testing.T) {
 	}
 	count := 0
 	for _, row := range rows {
-		re, err := pretok.Compile(row.Pattern)
+		re, err := regex.Compile(row.Pattern)
 		if row.Pattern == patternP25 || row.Pattern == patternP14 || row.Pattern == patternP10 || row.Pattern == patternP22 || setReferences[row.Pattern] != nil || row.Pattern == pattern || row.Pattern == patternMarks || row.Pattern == patternTriples || row.Pattern == patternCaseWords || row.Pattern == patternLineEnd || row.Pattern == patternLiteralNewlines || row.Pattern == patternPossessive || row.Pattern == patternDigit || row.Pattern == patternNumberTriples || row.Pattern == patternQwenTriples || row.Pattern == patternQwenRuns || row.Pattern == patternCaseWordsSuffix || row.Pattern == patternCaseWordsSuffixTriples {
 			if err != nil || re == nil {
 				t.Fatal("registered string rejected")
 			}
 			count++
-		} else if !errors.Is(err, pretok.ErrUnsupportedPattern) || re != nil {
+		} else if !errors.Is(err, regex.ErrUnsupportedPattern) || re != nil {
 			t.Fatalf("unexpectedly accepted %q", row.Pattern)
 		}
 	}
@@ -190,7 +190,7 @@ func TestSupportedCorpusStrings(t *testing.T) {
 		t.Fatalf("registered corpus entries: %d", count)
 	}
 	for _, p := range []string{"", "[", ".*", "(?:" + patternLiteralNewlines + ")", patternLiteralNewlines + " ", "(?:" + patternPossessive + ")", patternPossessive + " ", strings.Replace(patternPossessive, `\p{N}|`, `\p{N}+|`, 1), `[0-9]{3}`, `[0-9][0-9]`, `[0-9][0-9][0-9] `, `\d{3}`, `\s+\z`, `(?m:\s+$)`, `\s*$`, `\s+$ `, "(?:" + patternCaseWords + ")", patternCaseWords + " ", strings.Replace(patternCaseWords, `[\r\n/]*`, `[\r\n]*`, 1), "(?:" + pattern + ")", pattern + " ", "(?:" + patternMarks + ")", patternMarks + " ", strings.ReplaceAll(pattern, `\r`, "\r")} {
-		if re, err := pretok.Compile(p); re != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
+		if re, err := regex.Compile(p); re != nil || !errors.Is(err, regex.ErrUnsupportedPattern) {
 			t.Fatalf("accepted unknown %q", p)
 		}
 	}
@@ -201,30 +201,30 @@ func TestOwnershipAndErrors(t *testing.T) {
 		t.Run(id, func(t *testing.T) { testOwnershipAndErrors(t, compiledPattern(t, p), p) })
 	}
 }
-func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
-	storage := make([]pretok.Span, 32)
+func testOwnershipAndErrors(t *testing.T, re *regex.Regexp, pattern string) {
+	storage := make([]regex.Span, 32)
 	for i := range storage {
-		storage[i] = pretok.Span{Start: 91, End: 92}
+		storage[i] = regex.Span{Start: 91, End: 92}
 	}
 	before := slices.Clone(storage)
 	for _, src := range []string{"\xff", "valid\xf0\x9f", "\xed\xa0\x80", "\xc0\xaf"} {
 		got, err := re.Split(src, storage[:1])
-		if !errors.Is(err, pretok.ErrInvalidUTF8) || len(got) != 1 || &got[0] != &storage[0] || !slices.Equal(before, storage) {
+		if !errors.Is(err, regex.ErrInvalidUTF8) || len(got) != 1 || &got[0] != &storage[0] || !slices.Equal(before, storage) {
 			t.Fatal("invalid UTF-8 mutated destination")
 		}
 		c, err := re.Cursor(src)
-		if !errors.Is(err, pretok.ErrInvalidUTF8) {
+		if !errors.Is(err, regex.ErrInvalidUTF8) {
 			t.Fatal(err)
 		}
 		if _, ok := c.Next(); ok {
 			t.Fatal("active cursor after error")
 		}
 	}
-	for _, r := range []*pretok.Regexp{nil, new(pretok.Regexp)} {
-		if _, err := r.Split("a", storage[:1]); !errors.Is(err, pretok.ErrUninitialized) {
+	for _, r := range []*regex.Regexp{nil, new(regex.Regexp)} {
+		if _, err := r.Split("a", storage[:1]); !errors.Is(err, regex.ErrUninitialized) {
 			t.Fatal(err)
 		}
-		if _, err := r.Cursor("a"); !errors.Is(err, pretok.ErrUninitialized) {
+		if _, err := r.Cursor("a"); !errors.Is(err, regex.ErrUninitialized) {
 			t.Fatal(err)
 		}
 	}
@@ -243,8 +243,8 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 	if err != nil || len(empty) != len(got) || &empty[0] != &got[0] {
 		t.Fatal("empty input appended spans")
 	}
-	var zero pretok.Cursor
-	if span, ok := zero.Next(); ok || span != (pretok.Span{}) {
+	var zero regex.Cursor
+	if span, ok := zero.Next(); ok || span != (regex.Span{}) {
 		t.Fatal("zero cursor not exhausted")
 	}
 	input := "123456X"
@@ -274,14 +274,14 @@ func testOwnershipAndErrors(t *testing.T, re *pretok.Regexp, pattern string) {
 		t.Fatal("cursor copy shares progress")
 	}
 	piece := strings.TrimPrefix("prefix\u2003\u2003X", "prefix")
-	want := []pretok.Span{{0, 3}, {3, 7}}
+	want := []regex.Span{{0, 3}, {3, 7}}
 	if pattern == patternP25 || pattern == patternP14 || pattern == patternP10 || pattern == patternTriples || pattern == patternLineEnd || pattern == patternDigit || pattern == patternNumberTriples {
 		want = nil
 	}
 	if ref := setReferences[pattern]; ref != nil {
 		want = nil
 		for _, m := range ref.FindAllStringIndex(piece, -1) {
-			want = append(want, pretok.Span{Start: m[0], End: m[1]})
+			want = append(want, regex.Span{Start: m[0], End: m[1]})
 		}
 	}
 	if !slices.Equal(collect(t, re, piece), want) {
@@ -300,7 +300,7 @@ func TestConcurrentReuse(t *testing.T) {
 		})
 	}
 }
-func testConcurrentReuse(t *testing.T, re *pretok.Regexp, text string) {
+func testConcurrentReuse(t *testing.T, re *regex.Regexp, text string) {
 	want, err := re.Split(text, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -310,7 +310,7 @@ func testConcurrentReuse(t *testing.T, re *pretok.Regexp, text string) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var dst []pretok.Span
+			var dst []regex.Span
 			for range 50 {
 				var err error
 				dst, err = re.Split(text, dst[:0])
@@ -346,7 +346,7 @@ func fuzzPartition(f *testing.F, pattern string) {
 	f.Fuzz(func(t *testing.T, src string) {
 		got, err := re.Split(src, nil)
 		if !utf8.ValidString(src) {
-			if !errors.Is(err, pretok.ErrInvalidUTF8) || got != nil {
+			if !errors.Is(err, regex.ErrInvalidUTF8) || got != nil {
 				t.Fatal("invalid UTF-8 accepted")
 			}
 			return
@@ -417,7 +417,7 @@ func TestQwenExamples(t *testing.T) {
 func BenchmarkCompile(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
-		if re, err := pretok.Compile(pattern); err != nil || re == nil {
+		if re, err := regex.Compile(pattern); err != nil || re == nil {
 			b.Fatal(err)
 		}
 	}
@@ -509,31 +509,31 @@ func TestP01Marks(t *testing.T) {
 // oracle in the massive-testing pipeline. This comparator keeps fuzzing offline.
 var p02Reference = regexp.MustCompile(`[0-9]{3}`)
 
-func assertP02Reference(t testing.TB, re *pretok.Regexp, src string) {
+func assertP02Reference(t testing.TB, re *regex.Regexp, src string) {
 	t.Helper()
 	assertReference(t, re, src, p02Reference)
 }
 
-func assertReference(t testing.TB, re *pretok.Regexp, src string, reference *regexp.Regexp) {
+func assertReference(t testing.TB, re *regex.Regexp, src string, reference *regexp.Regexp) {
 	t.Helper()
 	assertReferencePairs(t, re, src, reference.FindAllStringIndex(src, -1))
 }
 
-func assertReferencePairs(t testing.TB, re *pretok.Regexp, src string, pairs [][]int) {
+func assertReferencePairs(t testing.TB, re *regex.Regexp, src string, pairs [][]int) {
 	t.Helper()
-	var matches, split []pretok.Span
+	var matches, split []regex.Span
 	end := 0
 	for _, pair := range pairs {
 		if pair[0] > end {
-			split = append(split, pretok.Span{Start: end, End: pair[0]})
+			split = append(split, regex.Span{Start: end, End: pair[0]})
 		}
-		span := pretok.Span{Start: pair[0], End: pair[1]}
+		span := regex.Span{Start: pair[0], End: pair[1]}
 		matches = append(matches, span)
 		split = append(split, span)
 		end = pair[1]
 	}
 	if end < len(src) {
-		split = append(split, pretok.Span{Start: end, End: len(src)})
+		split = append(split, regex.Span{Start: end, End: len(src)})
 	}
 	if got := collect(t, re, src); !slices.Equal(got, matches) {
 		t.Fatalf("%q: matches %v want %v", src, got, matches)
@@ -626,7 +626,7 @@ func TestP04Examples(t *testing.T) {
 }
 
 func TestP04TableProfile(t *testing.T) {
-	data, err := os.ReadFile("testdata/patterns/P04/manifest.json")
+	data, err := os.ReadFile("../../testdata/patterns/P04/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -641,7 +641,7 @@ func TestP04TableProfile(t *testing.T) {
 	if m.Pattern != patternCaseWords {
 		t.Fatal("P04 provenance pattern mismatch")
 	}
-	for path, want := range map[string]string{"internal/scan/case_tables.go": m.TablesSHA, "testdata/patterns/generate_case_tables.py": m.GeneratorSHA} {
+	for path, want := range map[string]string{"../scan/case_tables.go": m.TablesSHA, "../../testdata/patterns/generate_case_tables.py": m.GeneratorSHA} {
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
@@ -661,15 +661,15 @@ func TestP03LineEnds(t *testing.T) {
 	re := compiledPattern(t, patternLineEnd)
 	for _, tc := range []struct {
 		text    string
-		matches []pretok.Span
+		matches []regex.Span
 	}{
-		{"", nil}, {"a \nX", []pretok.Span{{1, 2}}}, {"a\nX", nil},
-		{"a \n", []pretok.Span{{1, 3}}}, {"a\rX", nil},
-		{"a\r\nX", []pretok.Span{{1, 2}}}, {"a \n\nX", []pretok.Span{{1, 3}}},
-		{"a\nX\n", []pretok.Span{{3, 4}}}, {"a\t\nX\n", []pretok.Span{{1, 2}, {4, 5}}},
-		{"a\u2028X", nil}, {"a\u2028", []pretok.Span{{1, 4}}},
-		{"a\u0085", []pretok.Span{{1, 3}}}, {"a\x1c", nil},
-		{"\u2003\nX", []pretok.Span{{0, 3}}},
+		{"", nil}, {"a \nX", []regex.Span{{1, 2}}}, {"a\nX", nil},
+		{"a \n", []regex.Span{{1, 3}}}, {"a\rX", nil},
+		{"a\r\nX", []regex.Span{{1, 2}}}, {"a \n\nX", []regex.Span{{1, 3}}},
+		{"a\nX\n", []regex.Span{{3, 4}}}, {"a\t\nX\n", []regex.Span{{1, 2}, {4, 5}}},
+		{"a\u2028X", nil}, {"a\u2028", []regex.Span{{1, 4}}},
+		{"a\u0085", []regex.Span{{1, 3}}}, {"a\x1c", nil},
+		{"\u2003\nX", []regex.Span{{0, 3}}},
 	} {
 		if got := collect(t, re, tc.text); !slices.Equal(got, tc.matches) {
 			t.Errorf("%q: matches %v want %v", tc.text, got, tc.matches)
@@ -685,7 +685,7 @@ func TestP03LineEnds(t *testing.T) {
 		}
 	}
 	// Each supplied fragment defines its own EOF, without trimming/normalization.
-	if got := collect(t, re, "x "); !slices.Equal(got, []pretok.Span{{1, 2}}) {
+	if got := collect(t, re, "x "); !slices.Equal(got, []regex.Span{{1, 2}}) {
 		t.Fatal(got)
 	}
 	if got := collect(t, re, "x y"); len(got) != 0 {

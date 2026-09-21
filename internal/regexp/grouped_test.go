@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"regexp"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternP12 = `(?:[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u3400-\u4DBF\uf900-\uFAFF\uFF65-\uFF9F\u2F00-\u2FDF]+|[\u0E00-\u0E7F]+|[\u0E80-\u0EFF]+|[\u1780-\u17FF]+|[\u1000-\u109F\uAA60-\uAA7F\uA9E0-\uA9FF]+|[\uAC00-\uD7AF\u1100-\u11FF]+)`
@@ -25,22 +25,22 @@ func groupedReferencePattern(p string) string {
 func TestGroupedHFExamples(t *testing.T) {
 	for _, tc := range []struct {
 		p, src string
-		want   []pretok.Span
+		want   []regex.Span
 	}{
-		{patternP12, "中ก", []pretok.Span{{0, 3}, {3, 6}}},
-		{patternP12, "中あカ가ᄀกກកက", []pretok.Span{{0, 9}, {9, 15}, {15, 18}, {18, 21}, {21, 24}, {24, 27}}},
+		{patternP12, "中ก", []regex.Span{{0, 3}, {3, 6}}},
+		{patternP12, "中あカ가ᄀกກកက", []regex.Span{{0, 9}, {9, 15}, {15, 18}, {18, 21}, {21, 24}, {24, 27}}},
 		{patternP12, "ꥠힰ", nil},
-		{patternP15, "中ก", []pretok.Span{{0, 3}}},
-		{patternP15, "〮、", []pretok.Span{{0, 3}, {3, 6}}},
-		{patternP15, "、〮", []pretok.Span{{0, 6}}},
-		{patternP15, "가〮、", []pretok.Span{{0, 6}, {6, 9}}},
-		{patternP15, "、〮가", []pretok.Span{{0, 6}, {6, 9}}},
-		{patternP15, "〯〮、", []pretok.Span{{0, 6}, {6, 9}}},
-		{patternP15, "〮〯가", []pretok.Span{{0, 9}}},
-		{patternP15, "ㄅ中", []pretok.Span{{0, 3}, {3, 6}}},
-		{patternP15, "A〮、X", []pretok.Span{{1, 4}, {4, 7}}},
-		{patternP15, "ﾠﾡ", []pretok.Span{{0, 6}}},
-		{patternP15, "ꥠힰ", []pretok.Span{{0, 6}}},
+		{patternP15, "中ก", []regex.Span{{0, 3}}},
+		{patternP15, "〮、", []regex.Span{{0, 3}, {3, 6}}},
+		{patternP15, "、〮", []regex.Span{{0, 6}}},
+		{patternP15, "가〮、", []regex.Span{{0, 6}, {6, 9}}},
+		{patternP15, "、〮가", []regex.Span{{0, 6}, {6, 9}}},
+		{patternP15, "〯〮、", []regex.Span{{0, 6}, {6, 9}}},
+		{patternP15, "〮〯가", []regex.Span{{0, 9}}},
+		{patternP15, "ㄅ中", []regex.Span{{0, 3}, {3, 6}}},
+		{patternP15, "A〮、X", []regex.Span{{1, 4}, {4, 7}}},
+		{patternP15, "ﾠﾡ", []regex.Span{{0, 6}}},
+		{patternP15, "ꥠힰ", []regex.Span{{0, 6}}},
 	} {
 		re := compiledPattern(t, tc.p)
 		if got := collect(t, re, tc.src); !slices.Equal(got, tc.want) {

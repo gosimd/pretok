@@ -1,7 +1,8 @@
 # Contextual decimal patterns
 
 P10, P14 and P25 share the Unicode `Nd` class, but need different search rules.
-All three exact strings are implemented. The public `Regexp`, `Cursor` and `Split` contracts stay unchanged.
+All three exact strings are implemented. Their `Regexp`, `Cursor` and `Split`
+contracts are now internal; use a Pipeline Split stage through the public API.
 
 ## Context and ownership
 

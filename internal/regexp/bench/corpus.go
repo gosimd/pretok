@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 type PatternSpec struct {
@@ -122,7 +122,7 @@ func Load(root, patternID string) (Manifest, []Batch, error) {
 	if Digest([]byte(manifest.Pattern)) != manifest.PatternSHA {
 		return manifest, nil, fmt.Errorf("invalid manifest schema or pattern hash")
 	}
-	_, err = pretok.Compile(manifest.Pattern)
+	_, err = regex.Compile(manifest.Pattern)
 	if err != nil {
 		return manifest, nil, err
 	}

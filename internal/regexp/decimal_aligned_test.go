@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"crypto/sha256"
@@ -12,12 +12,12 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternP25 = `\p{Nd}{1,510}(?=(?>\p{Nd}{510})*(?:\P{Nd}|$))|\G\p{Nd}{510}`
 
-var p25Runs = regexp.MustCompile(`[` + referenceRangeBody("internal/scan/decimal_tables.go", "decimalRanges") + `]+`)
+var p25Runs = regexp.MustCompile(`[` + referenceRangeBody("../scan/decimal_tables.go", "decimalRanges") + `]+`)
 
 // Independent RE2 run selection plus right-to-left grouping of rune boundaries.
 // The production scanner counts forwards and carries a cached byte endpoint.
@@ -40,7 +40,7 @@ func p25ReferencePairs(src string) [][]int {
 	}
 	return pairs
 }
-func assertP25Reference(t testing.TB, re *pretok.Regexp, src string) {
+func assertP25Reference(t testing.TB, re *regex.Regexp, src string) {
 	t.Helper()
 	assertReferencePairs(t, re, src, p25ReferencePairs(src))
 }
@@ -70,7 +70,7 @@ func TestP25HFOffsets(t *testing.T) {
 	assertReferencePairs(t, re, "١２𝟛4٥", [][]int{{0, 12}})
 	assertReferencePairs(t, re, "123\U00011de0456", [][]int{{0, 3}, {7, 10}})
 	for _, near := range []string{`\p{Nd}{1,510}`, `\p{Nd}{1,510}(?=(?:\p{Nd}{510})*(?:\P{Nd}|$))|\G\p{Nd}{510}`, strings.ReplaceAll(patternP25, "510", "511"), strings.ReplaceAll(patternP25, "Nd", "N"), patternP25 + " ", "(?:" + patternP25 + ")"} {
-		if r, err := pretok.Compile(near); r != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
+		if r, err := regex.Compile(near); r != nil || !errors.Is(err, regex.ErrUnsupportedPattern) {
 			t.Fatalf("accepted %q", near)
 		}
 	}
@@ -95,13 +95,13 @@ func TestP25Runs(t *testing.T) {
 	}
 }
 
-func drain(t testing.TB, c *pretok.Cursor) []pretok.Span {
+func drain(t testing.TB, c *regex.Cursor) []regex.Span {
 	t.Helper()
-	var spans []pretok.Span
+	var spans []regex.Span
 	for s, ok := c.Next(); ok; s, ok = c.Next() {
 		spans = append(spans, s)
 	}
-	if s, ok := c.Next(); ok || s != (pretok.Span{}) {
+	if s, ok := c.Next(); ok || s != (regex.Span{}) {
 		t.Fatal("cursor not exhausted")
 	}
 	return spans
@@ -128,7 +128,7 @@ func TestP25CursorCacheOwnership(t *testing.T) {
 	b, _ := re.Cursor(strings.Repeat("1", 512))
 	a.Next()
 	b.Next()
-	if got := drain(t, &b); !slices.Equal(got, []pretok.Span{{Start: 2, End: 512}}) {
+	if got := drain(t, &b); !slices.Equal(got, []regex.Span{{Start: 2, End: 512}}) {
 		t.Fatal("run cache leaked between subjects")
 	}
 	if got := drain(t, &a); !slices.Equal(got, want[1:]) {
@@ -138,8 +138,8 @@ func TestP25CursorCacheOwnership(t *testing.T) {
 		testConcurrentReuse(t, re, text)
 	}
 	wantSplit, _ := re.Split(src, nil)
-	dst := make([]pretok.Span, 0, len(wantSplit)+1)
-	dst = append(dst, pretok.Span{Start: 91, End: 92})
+	dst := make([]regex.Span, 0, len(wantSplit)+1)
+	dst = append(dst, regex.Span{Start: 91, End: 92})
 	got, err := re.Split(src, dst)
 	if err != nil || &got[0] != &dst[0] || !slices.Equal(got[1:], wantSplit) {
 		t.Fatal("cached split append/reuse failed")
@@ -157,7 +157,7 @@ func TestP25CursorCacheOwnership(t *testing.T) {
 }
 
 func TestP25Profile(t *testing.T) {
-	data, err := os.ReadFile("testdata/patterns/P25/manifest.json")
+	data, err := os.ReadFile("../../testdata/patterns/P25/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestP25Profile(t *testing.T) {
 	if m.Profile != "../P10/manifest.json" {
 		t.Fatal("unexpected shared profile")
 	}
-	data, err = os.ReadFile("testdata/patterns/P25/" + m.Profile)
+	data, err = os.ReadFile("../../testdata/patterns/P25/" + m.Profile)
 	if err != nil {
 		t.Fatal(err)
 	}

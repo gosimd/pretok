@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"crypto/sha256"
@@ -11,16 +11,16 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternP14 = `\A\p{Nd}{3}|\G\p{Nd}{3}`
 
-var p14Reference = regexp.MustCompile(`[` + referenceRangeBody("internal/scan/decimal_tables.go", "decimalRanges") + `]{3}`)
+var p14Reference = regexp.MustCompile(`[` + referenceRangeBody("../scan/decimal_tables.go", "decimalRanges") + `]{3}`)
 
 // RE2 finds triples independently of the scanner. Only the uninterrupted prefix
 // belongs to P14; a later match beyond any gap must not restart the sequence.
-func assertP14Reference(t testing.TB, re *pretok.Regexp, src string) {
+func assertP14Reference(t testing.TB, re *regex.Regexp, src string) {
 	t.Helper()
 	pairs := p14Reference.FindAllStringIndex(src, -1)
 	end, n := 0, 0
@@ -55,7 +55,7 @@ func TestP14HFOffsets(t *testing.T) {
 	// A separately supplied slice establishes a new subject with its own byte zero.
 	assertReferencePairs(t, re, ("x１２٣٤𝟝67")[1:], [][]int{{0, 8}, {8, 15}})
 	for _, near := range []string{`\G\p{Nd}{3}`, `\A\p{Nd}{3}`, `\p{Nd}{3}`, `\A\p{N}{3}|\G\p{N}{3}`, patternP14 + " ", "(?:" + patternP14 + ")"} {
-		if r, err := pretok.Compile(near); r != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
+		if r, err := regex.Compile(near); r != nil || !errors.Is(err, regex.ErrUnsupportedPattern) {
 			t.Fatalf("accepted %q", near)
 		}
 	}
@@ -64,8 +64,8 @@ func TestP14HFOffsets(t *testing.T) {
 	c.Next()
 	copy := c
 	for range 3 {
-		for _, cursor := range []*pretok.Cursor{&c, &copy} {
-			if span, ok := cursor.Next(); ok || span != (pretok.Span{}) {
+		for _, cursor := range []*regex.Cursor{&c, &copy} {
+			if span, ok := cursor.Next(); ok || span != (regex.Span{}) {
 				t.Fatal("search resumed after gap")
 			}
 		}
@@ -96,7 +96,7 @@ func TestP14DecimalRuns(t *testing.T) {
 }
 
 func TestP14Profile(t *testing.T) {
-	data, err := os.ReadFile("testdata/patterns/P14/manifest.json")
+	data, err := os.ReadFile("../../testdata/patterns/P14/manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -116,7 +116,7 @@ func TestP14Profile(t *testing.T) {
 	if m.Profile != "../P10/manifest.json" {
 		t.Fatal("unexpected shared Unicode profile")
 	}
-	data, err = os.ReadFile("testdata/patterns/P14/" + m.Profile)
+	data, err = os.ReadFile("../../testdata/patterns/P14/" + m.Profile)
 	if err != nil {
 		t.Fatal(err)
 	}

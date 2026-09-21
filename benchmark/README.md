@@ -1,6 +1,26 @@
-# Cross-engine benchmark
+# Benchmarks
 
-The offline suite compares the public `pretok` API with native Oniguruma
+The public API benchmarks live in `pipeline_bench_test.go` at the repository
+root. They measure CompileJSON, Walk, WalkText and WalkTextUnsafe; existing cases
+cover Whitespace, Metaspace, ByteLevel and a Split/ByteLevel sequence. Every
+supported pre-tokenizer type is a performance target, including BertPreTokenizer,
+CharDelimiterSplit, Digits, Punctuation, UnicodeScripts and WhitespaceSplit.
+The current reorganization moves existing cases without expanding coverage.
+
+```sh
+GOWORK=off go test -mod=readonly -run '^$' -bench 'Benchmark(Pipeline|CompileJSON)' -benchmem .
+GOWORK=off go test -mod=readonly -run '^$' -bench . -benchmem ./internal/regexp
+```
+
+Regex microbenchmarks now live in `internal/regexp`, and their cross-engine
+measurement infrastructure in `internal/regexp/bench`. Commands below still run
+from the repository root. Historical report labels such as `pretok.Split` refer
+to the public API at the measured revision, now internal; those results do not
+measure Pipeline or other built-in pre-tokenizers.
+
+## Regex cross-engine suite
+
+The offline regex suite compares `internal/regexp` with native Oniguruma
 and HF Tokenizers 0.22.2 for the exact P01–P25 regexes. It contains five approximately
 1 MiB natural text pools and shared synthetic diagnostic pools. See
 [the methodology](../docs/Benchmark.md) and [corpus licenses](corpus/LICENSE.md).

@@ -1,14 +1,14 @@
-package pretok_test
+package regexp_test
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 func ExampleCompile() {
-	re, err := pretok.Compile(`\p{N}{1,3}`) // Exact P07 string.
+	re, err := regex.Compile(`\p{N}{1,3}`) // Exact P07 string.
 	if err != nil {
 		panic(err)
 	}
@@ -28,7 +28,7 @@ func ExampleCompile() {
 }
 
 func ExampleRegexp_Cursor() {
-	re, err := pretok.Compile(`\p{N}{1,3}`)
+	re, err := regex.Compile(`\p{N}{1,3}`)
 	if err != nil {
 		panic(err)
 	}
@@ -46,11 +46,11 @@ func ExampleRegexp_Cursor() {
 }
 
 func ExampleRegexp_Split() {
-	re, err := pretok.Compile(`\p{N}{1,3}`)
+	re, err := regex.Compile(`\p{N}{1,3}`)
 	if err != nil {
 		panic(err)
 	}
-	spans := make([]pretok.Span, 0, 8)
+	spans := make([]regex.Span, 0, 8)
 	for _, input := range []string{"x1234y", "１２3"} {
 		spans, err = re.Split(input, spans[:0])
 		if err != nil {
@@ -64,20 +64,20 @@ func ExampleRegexp_Split() {
 }
 
 func ExampleCompile_errors() {
-	_, err := pretok.Compile(`a+`) // Valid general regex, unregistered in pretok.
-	fmt.Println(errors.Is(err, pretok.ErrUnsupportedPattern))
+	_, err := regex.Compile(`a+`) // Valid general regex, unregistered in regex.
+	fmt.Println(errors.Is(err, regex.ErrUnsupportedPattern))
 
-	re, err := pretok.Compile(`\p{N}{1,3}`)
+	re, err := regex.Compile(`\p{N}{1,3}`)
 	if err != nil {
 		panic(err)
 	}
-	dst := []pretok.Span{{Start: 10, End: 11}}
+	dst := []regex.Span{{Start: 10, End: 11}}
 	dst, err = re.Split("\xff", dst)
-	fmt.Println(errors.Is(err, pretok.ErrInvalidUTF8), dst)
+	fmt.Println(errors.Is(err, regex.ErrInvalidUTF8), dst)
 
-	var zero pretok.Regexp
+	var zero regex.Regexp
 	_, err = zero.Cursor("123")
-	fmt.Println(errors.Is(err, pretok.ErrUninitialized))
+	fmt.Println(errors.Is(err, regex.ErrUninitialized))
 	// Output:
 	// true
 	// true [{10 11}]

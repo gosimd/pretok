@@ -2,7 +2,7 @@ package bench
 
 import (
 	"fmt"
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 	"slices"
 	"unicode/utf8"
 )
@@ -23,14 +23,14 @@ type ReferenceRequest struct {
 	Split   [][2]int `json:"split"`
 }
 
-func checkedSpans(src string, raw [][2]int, partition bool) ([]pretok.Span, error) {
-	out := make([]pretok.Span, len(raw))
+func checkedSpans(src string, raw [][2]int, partition bool) ([]regex.Span, error) {
+	out := make([]regex.Span, len(raw))
 	end := 0
 	for i, s := range raw {
 		if s[0] < end || partition && s[0] != end || s[1] <= s[0] || s[1] > len(src) || !utf8.ValidString(src[end:s[0]]) || !utf8.ValidString(src[s[0]:s[1]]) {
 			return nil, fmt.Errorf("invalid reference span %d", i)
 		}
-		out[i] = pretok.Span{Start: s[0], End: s[1]}
+		out[i] = regex.Span{Start: s[0], End: s[1]}
 		end = s[1]
 	}
 	if partition && end != len(src) {
@@ -39,7 +39,7 @@ func checkedSpans(src string, raw [][2]int, partition bool) ([]pretok.Span, erro
 	return out, nil
 }
 
-func Verify(re *pretok.Regexp, patternSHA string, b *Batch, ref Reference) error {
+func Verify(re *regex.Regexp, patternSHA string, b *Batch, ref Reference) error {
 	b.Verified = false
 	if ref.Corpus != b.ID || ref.Size != b.Size || ref.PatternSHA != patternSHA || ref.InputSHA != b.InputSHA || len(ref.Requests) != len(b.Requests) {
 		return fmt.Errorf("reference identity or request count mismatch for %s/%d", b.ID, b.Size)
@@ -90,7 +90,7 @@ func (b *Batch) OutputCount(engine string) int {
 	return b.Spans
 }
 
-func mismatch(engine, id string, size, index int, src string, got, want []pretok.Span) error {
+func mismatch(engine, id string, size, index int, src string, got, want []regex.Span) error {
 	at := 0
 	for at < len(got) && at < len(want) && got[at] == want[at] {
 		at++

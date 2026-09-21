@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"os"
@@ -7,13 +7,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 // Use the pinned N set with an independent regex engine; Go's Unicode version
 // need not agree with the reference profile used by the scanners.
 func pinnedNumberClass() string {
-	data, err := os.ReadFile("internal/scan/unicode_tables.go")
+	data, err := os.ReadFile("../scan/unicode_tables.go")
 	if err != nil {
 		panic(err)
 	}
@@ -33,9 +33,9 @@ var oneNumber = regexp.MustCompile(`\A` + pinnedNumberClass() + `\z`)
 
 // P05 provides all non-numeric decisions. An independent regex class selects
 // adjacent single-number matches to merge; the live HF gate checks the whole plan.
-func assertQwenNumbers(t testing.TB, re *pretok.Regexp, src string, max int) {
+func assertQwenNumbers(t testing.TB, re *regex.Regexp, src string, max int) {
 	t.Helper()
-	var want []pretok.Span
+	var want []regex.Span
 	count := 0
 	for _, span := range collect(t, compiled(t), src) {
 		if oneNumber.MatchString(src[span.Start:span.End]) {
@@ -71,7 +71,7 @@ func TestNumericPatterns(t *testing.T) {
 				}
 			}
 			for _, near := range []string{"(?:" + p + ")", p + " "} {
-				if re, err := pretok.Compile(near); re != nil || err == nil {
+				if re, err := regex.Compile(near); re != nil || err == nil {
 					t.Fatalf("accepted %q", near)
 				}
 			}
@@ -79,7 +79,7 @@ func TestNumericPatterns(t *testing.T) {
 	}
 }
 
-func checkNumeric(t testing.TB, re *pretok.Regexp, p, src string) {
+func checkNumeric(t testing.TB, re *regex.Regexp, p, src string) {
 	t.Helper()
 	switch p {
 	case patternDigit:
@@ -96,7 +96,7 @@ func checkNumeric(t testing.TB, re *pretok.Regexp, p, src string) {
 // Byte offsets captured from pinned HF 0.22.2 before implementation.
 func TestNumericHFOffsets(t *testing.T) {
 	src := "A１²Ⅳ١𐒠3B"
-	for p, want := range map[string][]pretok.Span{
+	for p, want := range map[string][]regex.Span{
 		patternDigit:         {{15, 16}},
 		patternNumberTriples: {{1, 9}, {9, 16}},
 		patternQwenTriples:   {{0, 1}, {1, 9}, {9, 16}, {16, 17}},

@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 // Selected pieces captured from HF Tokenizers 0.22.2 before implementation.
@@ -27,10 +27,10 @@ func TestCaseWordSuffixHF(t *testing.T) {
 				{"'s", []string{"'s"}},
 				{"a'ſ", []string{"a'ſ"}},
 			} {
-				var want []pretok.Span
+				var want []regex.Span
 				pos := 0
 				for _, piece := range tc.pieces {
-					want = append(want, pretok.Span{Start: pos, End: pos + len(piece)})
+					want = append(want, regex.Span{Start: pos, End: pos + len(piece)})
 					pos += len(piece)
 				}
 				if strings.Join(tc.pieces, "") != tc.src {
@@ -44,14 +44,14 @@ func TestCaseWordSuffixHF(t *testing.T) {
 				}
 			}
 			for _, near := range []string{"(?:" + pattern + ")", pattern + " ", strings.ReplaceAll(pattern, "(?i:", "(?:"), strings.Replace(pattern, `[\r\n/]*`, `[\r\n]*`, 1)} {
-				if re, err := pretok.Compile(near); re != nil || !errors.Is(err, pretok.ErrUnsupportedPattern) {
+				if re, err := regex.Compile(near); re != nil || !errors.Is(err, regex.ErrUnsupportedPattern) {
 					t.Fatalf("accepted %q", near)
 				}
 			}
 		})
 	}
 	src := "A１²Ⅳ١𐒠3B"
-	for pattern, want := range map[string][]pretok.Span{
+	for pattern, want := range map[string][]regex.Span{
 		patternCaseWordsSuffix:        {{0, 1}, {1, 4}, {4, 6}, {6, 9}, {9, 11}, {11, 15}, {15, 16}, {16, 17}},
 		patternCaseWordsSuffixTriples: {{0, 1}, {1, 9}, {9, 16}, {16, 17}},
 	} {

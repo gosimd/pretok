@@ -1,8 +1,9 @@
 # Compiled pre-tokenizer pipelines
 
-This is an **unreleased, additive API** on the `pretok-api` branch. It implements
-pre-tokenization, not a complete tokenizer. Existing `Regexp` methods and the
-25-string regex registry keep their contracts.
+This is the **unreleased public API** on the `pretok-api` branch. It implements
+pre-tokenization, not a complete tokenizer. The former root `Regexp`, `Compile`
+and `Cursor` API has moved to `internal/regexp`; regex functionality is exposed
+through Pipeline's Split stage. The 25-string regex registry is unchanged.
 
 ```go
 func CompileJSON(config []byte) (*Pipeline, error)
@@ -47,7 +48,7 @@ after earlier transformations and with either text-only method. Legacy `add_pref
 and redundant `str_rep` Metaspace fields are not accepted; use the current schema.
 
 ByteLevel's built-in GPT-2 scanner is internal and does not register another
-accepted spelling for `Compile`. `trim_offsets` is accepted and checked as a
+accepted spelling for regex Split stages. `trim_offsets` is accepted and checked as a
 boolean but **does not run Encoding postprocessing**. OriginalRange returns
 pre-tokenization alignment without trimming original whitespace.
 

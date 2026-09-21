@@ -2,8 +2,9 @@
 
 ## Project boundary
 
-Build `github.com/gosimd/pretok` as a compiler for common pre-tokenization regex
-patterns into specialized scanners. Follow the design and status in `README.md`.
+Build `github.com/gosimd/pretok` as an HF-compatible pre-tokenization library
+with a public compiled Pipeline API. Regex scanning is an internal component,
+not a separate public interface. Follow the design and status in `README.md`.
 The [supported-pattern registry](docs/SupportedPatterns.md) is the canonical
 documentation list of implemented exact strings and tokenizer examples. Update it
 when adding support, preserving exact decoded strings and pinned source links.
@@ -12,25 +13,28 @@ UTF-8 processing; classification and boundary decisions remain scalar. Keep
 compatibility claims scoped to registered patterns
 and the pinned fixtures; do not claim unmeasured performance improvements.
 
-Keep the library focused on pre-token boundaries. Do not add BPE, vocabulary
-lookup, token IDs, normalization, special-token handling, ByteLevel mapping, Hub
-downloads, or a configurable full tokenizer pipeline without an explicit request.
+Keep the library focused on pre-tokenization, including the implemented
+Metaspace/ByteLevel transformations and Sequence composition. Do not add BPE,
+vocabulary lookup, token IDs, normalization, special-token handling, Hub
+downloads, or a full tokenizer pipeline without an explicit request.
 Do not expand this into a general-purpose regex engine.
 
 ## Public API and ownership
 
 - Keep a small root facade. The exact-string registry, plans, scratch, and CPU
   dispatch belong under `internal/`. Parser and AST/IR packages are deferred.
-- Keep the public names `Regexp`, `Compile`, `Cursor`, and `Split` consistent with
-  `regexp.go`. Preserve the implemented contracts and their tests.
-  Update documentation whenever the actual contract changes. Do not introduce a
-  full `PreTokenizer` or `CompileSequence` pipeline without an explicit request.
+- Keep `CompileJSON`, `Pipeline`, `Piece`, `Span`, and their errors in the root
+  facade. `Regexp`, `Compile`, `Cursor`, and isolated `Split` belong to
+  `internal/regexp`. Preserve their internal contracts and existing coverage;
+  expose regex functionality to consumers through Pipeline Split stages.
+  Update documentation whenever the actual contract changes.
 - Compile once into immutable plans. Concurrent scans must not share mutable
   execution state.
-- Return byte spans into the supplied input. Preserve its bytes and document the
-  split mode, unmatched-gap handling, empty-input behavior, and UTF-8 policy.
-- Support caller-owned destination reuse with explicit append semantics. Do not
-  retain input or destination buffers. Keep any reusable scratch internal.
+- Pipeline may transform text; `Piece.OriginalRange` maps back to source UTF-8
+  byte offsets. Document split modes, gaps, empty input and UTF-8 validation.
+  `Walk` pieces and `WalkTextUnsafe` strings are callback-scoped; `WalkText`
+  strings may be retained. Preserve internal regex byte-span/append semantics.
+- Do not retain input or destination buffers. Keep reusable scratch internal.
 - In the first implementation, return an unsupported-pattern error for any string
   absent from the supported registry, including malformed syntax. Do not add a
   parser merely for syntax diagnostics. Never approximate or use a regex fallback.
@@ -101,6 +105,12 @@ there is code to justify them. Prefer readable implementations and small changes
 over speculative abstractions or broad refactoring.
 
 ## Tests
+
+Keep public Pipeline tests, examples and benchmarks in the root package;
+regex API tests and microbenchmarks belong in `internal/regexp`, regex report
+infrastructure in `internal/regexp/bench`, and scanner tests in `internal/scan`.
+All supported pre-tokenizer types are correctness and performance targets,
+including built-ins, transformations and sequences, not just regex patterns.
 
 For compiler and scanner changes, add focused regression tests and appropriate
 differential or fuzz coverage:

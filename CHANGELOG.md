@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Breaking: make Pipeline the public pre-tokenization API. Move `Regexp`,
+  `Compile`, `Cursor`, their tests, examples and microbenchmarks to
+  `internal/regexp`; move regex measurement infrastructure to
+  `internal/regexp/bench`. Existing public Pipeline tests and benchmarks remain
+  in the root package. No new test or benchmark cases are added by this move.
+  Use a Pipeline Split stage for registered regex patterns. Public `Span` and
+  error sentinels remain part of the Pipeline API; `ErrUninitialized` now reports
+  an uninitialized pipeline. The v0.1.0 tag retains its historical API.
 - Add `CompileJSON`, immutable `Pipeline`, `Walk`, `WalkText`, `WalkTextUnsafe`,
   and callback-scoped `Piece.Text` / `Piece.OriginalRange`. Pipelines support the nine documented
   built-ins plus exact-registry/literal `Split` and `ByteLevel`; see
@@ -15,9 +23,9 @@
 - P01 `Split` validates the complete input, then scans 1,024-rune windows decoded
   by `github.com/gosimd/unicode v0.1.2`. Supported `GOEXPERIMENT=simd` builds use
   SIMD UTF-8 kernels; other configurations retain byte scanning.
-- Rune scratch is local to each call. Short inputs keep byte scanning; public
-  cursor-copy semantics, byte boundaries, error atomicity and the v0.1.0 API
-  remain unchanged.
+- Rune scratch is local to each call. Short inputs keep byte scanning;
+  internal cursor-copy semantics, byte boundaries and error atomicity remain
+  unchanged by the buffering optimization.
 
 ## v0.1.0
 

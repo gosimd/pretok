@@ -1,4 +1,11 @@
-# Benchmark design
+# Internal regex benchmark design
+
+This document covers the regex subsystem, now exposed only inside the module as
+`internal/regexp`, with report infrastructure in `internal/regexp/bench`.
+The public Pipeline benchmark suite lives in `pipeline_bench_test.go`; all
+supported built-ins, transformations and sequences are also performance targets.
+See [benchmark/README.md](../benchmark/README.md) for current coverage and commands.
+Historical regex reports keep their original API labels and measured revisions.
 
 **Status:** implemented for P01–P25, with five pinned natural-language pools,
 two shared synthetic pools, Go measurement/orchestration, native Oniguruma/HF runners,
@@ -10,7 +17,7 @@ The benchmark answers two separate questions:
 
 1. How much does a specialized scanner improve boundary discovery over a compatible
    general regex engine?
-2. How much does the public regex-splitting API cost compared with HF Tokenizers'
+2. How much does the internal regex-splitting API cost compared with HF Tokenizers'
    implementation of the same splitting stage?
 
 Select P01–P25 with `-pattern`. Each run uses one exact supported string and its
@@ -28,8 +35,8 @@ use the same reference-generation pipeline. The case-word suffix profiles
 also generate their references live. P02–P04/P06–P09/P11–P13/P15–P24 store no reference
 outputs; their native-build guard uses the existing P05 fixtures with the P05 regex. Compile once before timing scans.
 Use the exact same decoded regex, input bytes, subject boundaries, and output
-semantics in every comparison. Broader tokenizer pipelines are a later integration
-benchmark in `gosimd/bpe`.
+semantics in every comparison. Public pre-tokenization pipelines are measured
+separately in this library; full tokenizer/BPE integration belongs to `gosimd/bpe`.
 
 ## Baselines
 
@@ -38,9 +45,9 @@ benchmark in `gosimd/bpe`.
 | Compilation | `Compile(pattern)` | Native Oniguruma compilation; HF Split construction separately | One-time setup cost |
 | Match iteration | `Cursor` and repeated `Next` | Native Oniguruma `find_iter` | Complete ordered sequence of match spans |
 | Position matching, diagnostic | Internal Go counterpart deferred | Native Oniguruma match-at-offset loop, including input validation | Additional P01/P04/P05/P06/P09/P13/P19/P20/P24 measurement; no core speedup ratio yet |
-| Public splitting | `Split(src, dst[:0])` and `Split(src, nil)` separately | Oniguruma iteration plus isolated-gap adapter and span output | Same output, with reused and fresh destination policies |
-| HF splitting stage | Public `Split` | Native HF `Split(Regex(pattern), Isolated, invert=false)` plus byte-offset extraction | Complete boundary-stage API cost, including HF representation overhead |
-| Future optimized backend | Public API using SIMD | The same API using the scalar plan | Backend-only improvement on the same semantics and allocation policy |
+| Internal splitting | `Split(src, dst[:0])` and `Split(src, nil)` separately | Oniguruma iteration plus isolated-gap adapter and span output | Same output, with reused and fresh destination policies |
+| HF splitting stage | Internal `Split` | Native HF `Split(Regex(pattern), Isolated, invert=false)` plus byte-offset extraction | Boundary-stage cost, including HF representation overhead |
+| Optimized backend | Internal API using SIMD | The same API using the scalar plan | Backend-only improvement on the same semantics and allocation policy |
 
 The primary regex engine is **Oniguruma**, through the same resolved `onig` /
 `onig_sys` dependency versions and build features as the native HF reference.
@@ -224,7 +231,7 @@ verification, JSON serialization, and subprocess communication are outside scan
 timing. Do not call a foreign function or Python once per match; if a later FFI
 adapter is measured, label that integration cost separately.
 
-Public pretok scanning includes its existing UTF-8 validation. For matching work
+Internal regex scanning includes its existing UTF-8 validation. For matching work
 with the same byte-input contract, the Rust wrapper validates each request with
 `from_utf8` inside the timed public operation before scanning. Label that wrapper
 explicitly. A separate core diagnostic may assume prevalidated input on both sides
@@ -289,6 +296,9 @@ benchmark/
     runs/                ignored local runs, including smoke and verification
     results/<pattern>/   selected completed runs by date, machine, and backend
 cmd/benchreport/          sequential runner orchestration and report generation
+internal/regexp/          regex API, unit tests and microbenchmarks
+internal/regexp/bench/    regex corpus validation, measurements and reports
+pipeline_bench_test.go   public Pipeline compilation and execution benchmarks
 ```
 
 Keep maintained benchmark sources and required manifests outside ignored
@@ -299,7 +309,7 @@ corpus data must produce an actionable error in a requested benchmark run, not a
 silently empty report.
 
 The implementation includes the five pools, synthetic cases, correctness gate,
-public pretok cursor/split rows, direct native Oniguruma iterator/collection and
+internal regex cursor/split rows, direct native Oniguruma iterator/collection and
 match-at-offset rows, native HF Split, and compilation rows. SIMD comparisons and
 an internal Go match-at core row remain deferred. Existing small Go benchmarks
 remain smoke checks and do not replace this cross-engine report.

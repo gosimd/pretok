@@ -1,10 +1,13 @@
 # Before/after comparison tools
 
-This runner currently implements the P01 public-API comparison: two Git revisions,
-each built with and without `GOEXPERIMENT=simd`. It reuses `internal/bench` for
+This runner implements the P01 regex comparison: two Git revisions, each built
+with and without `GOEXPERIMENT=simd`. It reuses `internal/regexp/bench` for
 corpus loading, reference verification, operations, timing and allocation counts.
 The measurement server in `main.go` is copied into each snapshot so both revisions
-execute the same harness. It runs only when explicitly invoked, not during tests.
+execute the same harness. For revisions predating the internal regexp package,
+the preparation script substitutes the historical root API and `internal/bench`
+import paths. This preserves reproduction of published public-API comparisons.
+It runs only when explicitly invoked, not during tests.
 
 `reproduce.py --result <published-directory> --work <new-directory>` reads
 `baseline_commit` and `implementation_commit` from the result's `environment.json`.

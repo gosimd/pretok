@@ -1,3 +1,7 @@
+// Package pretok compiles HF pre-tokenizer configurations into reusable
+// pipelines. Pipelines split and transform text, with optional mapping back to
+// original byte offsets. Regex stages use registered specialized scanners,
+// without a general regex fallback.
 package pretok
 
 import (
@@ -10,6 +14,13 @@ import (
 )
 
 var (
+	// ErrUnsupportedPattern means that a Split stage's exact regex string is not
+	// registered. It also covers malformed expressions; no syntax parsing occurs.
+	ErrUnsupportedPattern = errors.New("pretok: unsupported pattern")
+	// ErrInvalidUTF8 means the supplied input is not valid UTF-8.
+	ErrInvalidUTF8 = errors.New("pretok: invalid UTF-8")
+	// ErrUninitialized means a nil or zero-value Pipeline was used.
+	ErrUninitialized = errors.New("pretok: uninitialized pipeline")
 	// ErrInvalidConfig indicates an invalid pre_tokenizer JSON configuration.
 	ErrInvalidConfig = pipeline.ErrInvalidConfig
 	// ErrUnsupportedPreTokenizer indicates an unsupported component type.
@@ -20,13 +31,20 @@ var (
 	ErrInvalidRange = pipeline.ErrInvalidRange
 )
 
+// Span is a half-open UTF-8 byte range [Start, End) in the original input.
+// OriginalRange returns non-empty spans on source character boundaries.
+type Span struct {
+	Start int
+	End   int
+}
+
 // Pipeline is an immutable compiled pre-tokenizer configuration. It is safe for
 // concurrent and reentrant use. Construct it with CompileJSON.
 type Pipeline struct{ program *pipeline.Program }
 
 // CompileJSON compiles the contents of tokenizer.json's pre_tokenizer field,
 // not the enclosing tokenizer document. A null configuration is an identity
-// pipeline. Unsupported regex strings retain Compile's exact-string policy.
+// pipeline. Split regex strings must match the supported registry exactly.
 // See docs/Pipeline.md for supported components, defaults, and limits.
 func CompileJSON(config []byte) (*Pipeline, error) {
 	p, err := pipeline.Compile(config)

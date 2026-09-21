@@ -1,4 +1,4 @@
-package pretok_test
+package regexp_test
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/gosimd/pretok"
+	regex "github.com/gosimd/pretok/internal/regexp"
 )
 
 const patternP22 = "[!\"#$%&'()*+,\\-./:;<=>?@\\[\\\\\\]^_`{|}~][A-Za-z]+|[^\r\n\\p{L}\\p{P}\\p{S}]?[\\p{L}\\p{M}]+| ?[\\p{P}\\p{S}]+[\r\n]*|\\s*[\r\n]+|\\s+(?!\\S)|\\s+"
@@ -31,17 +31,17 @@ func referenceRangeBody(path, name string) string {
 
 var p22Head = func() *regexp.Regexp {
 	head, _, _ := strings.Cut(patternP22, `|\s*`)
-	head = strings.ReplaceAll(head, `[\p{L}\p{M}]`, `[`+referenceRangeBody("internal/scan/word_tables.go", "wordMarkRanges")+`]`)
-	head = strings.ReplaceAll(head, `\p{L}`, referenceRangeBody("internal/scan/unicode_tables.go", "letterRanges"))
-	head = strings.ReplaceAll(head, `\p{P}\p{S}`, referenceRangeBody("internal/scan/punctuation_tables.go", "punctuationSymbolRanges"))
+	head = strings.ReplaceAll(head, `[\p{L}\p{M}]`, `[`+referenceRangeBody("../scan/word_tables.go", "wordMarkRanges")+`]`)
+	head = strings.ReplaceAll(head, `\p{L}`, referenceRangeBody("../scan/unicode_tables.go", "letterRanges"))
+	head = strings.ReplaceAll(head, `\p{P}\p{S}`, referenceRangeBody("../scan/punctuation_tables.go", "punctuationSymbolRanges"))
 	return regexp.MustCompile(`\A(?:` + head + `)`)
 }()
 var p22Newline = regexp.MustCompile(`\A[` + referenceSpace + `]*[\r\n]+`)
 var p22Whitespace = regexp.MustCompile(`\A[` + referenceSpace + `]+`)
 
-func assertP22Reference(t testing.TB, re *pretok.Regexp, src string) {
+func assertP22Reference(t testing.TB, re *regex.Regexp, src string) {
 	t.Helper()
-	var want, split []pretok.Span
+	var want, split []regex.Span
 	previous := 0
 	for pos := 0; pos < len(src); {
 		tail := src[pos:]
@@ -66,17 +66,17 @@ func assertP22Reference(t testing.TB, re *pretok.Regexp, src string) {
 			pos += width
 			continue
 		}
-		span := pretok.Span{Start: pos, End: pos + end}
+		span := regex.Span{Start: pos, End: pos + end}
 		want = append(want, span)
 		if pos > previous {
-			split = append(split, pretok.Span{Start: previous, End: pos})
+			split = append(split, regex.Span{Start: previous, End: pos})
 		}
 		split = append(split, span)
 		previous = span.End
 		pos = span.End
 	}
 	if previous < len(src) {
-		split = append(split, pretok.Span{Start: previous, End: len(src)})
+		split = append(split, regex.Span{Start: previous, End: len(src)})
 	}
 	if got := collect(t, re, src); !slices.Equal(got, want) {
 		t.Fatalf("%q matches %v want %v", src, got, want)
@@ -89,22 +89,22 @@ func TestP22HFExamples(t *testing.T) {
 	re := compiledPattern(t, patternP22)
 	for _, tc := range []struct {
 		src  string
-		want []pretok.Span
+		want []regex.Span
 	}{
-		{"!abcé", []pretok.Span{{0, 4}, {4, 6}}},
-		{"123abc", []pretok.Span{{2, 6}}},
-		{" 123abc", []pretok.Span{{0, 1}, {3, 7}}},
-		{"!a\u0301", []pretok.Span{{0, 2}, {2, 4}}},
-		{"1\u0301a", []pretok.Span{{0, 4}}},
-		{"\x00abc", []pretok.Span{{0, 4}}},
-		{"\u200dabc", []pretok.Span{{0, 6}}},
-		{"😀abc", []pretok.Span{{0, 4}, {4, 7}}},
-		{"!😀abc", []pretok.Span{{0, 5}, {5, 8}}},
-		{"!!abc", []pretok.Span{{0, 2}, {2, 5}}},
-		{"\u2003\u2003X", []pretok.Span{{0, 3}, {3, 7}}},
-		{"\u0301", []pretok.Span{{0, 2}}},
-		{"12\u0301", []pretok.Span{{1, 4}}},
-		{"١٢abc", []pretok.Span{{2, 7}}},
+		{"!abcé", []regex.Span{{0, 4}, {4, 6}}},
+		{"123abc", []regex.Span{{2, 6}}},
+		{" 123abc", []regex.Span{{0, 1}, {3, 7}}},
+		{"!a\u0301", []regex.Span{{0, 2}, {2, 4}}},
+		{"1\u0301a", []regex.Span{{0, 4}}},
+		{"\x00abc", []regex.Span{{0, 4}}},
+		{"\u200dabc", []regex.Span{{0, 6}}},
+		{"😀abc", []regex.Span{{0, 4}, {4, 7}}},
+		{"!😀abc", []regex.Span{{0, 5}, {5, 8}}},
+		{"!!abc", []regex.Span{{0, 2}, {2, 5}}},
+		{"\u2003\u2003X", []regex.Span{{0, 3}, {3, 7}}},
+		{"\u0301", []regex.Span{{0, 2}}},
+		{"12\u0301", []regex.Span{{1, 4}}},
+		{"١٢abc", []regex.Span{{2, 7}}},
 	} {
 		if got := collect(t, re, tc.src); !slices.Equal(got, tc.want) {
 			t.Fatalf("%q: %v want %v", tc.src, got, tc.want)
@@ -136,7 +136,7 @@ func TestP22Transitions(t *testing.T) {
 		}
 	}
 	for _, near := range []string{patternP22 + " ", "(?:" + patternP22 + ")", strings.ReplaceAll(patternP22, "\r", `\r`)} {
-		if _, err := pretok.Compile(near); !errors.Is(err, pretok.ErrUnsupportedPattern) {
+		if _, err := regex.Compile(near); !errors.Is(err, regex.ErrUnsupportedPattern) {
 			t.Fatal("accepted near miss", near)
 		}
 	}
